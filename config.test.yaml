@@ -1,0 +1,10 @@
+results_dir: results/test
+
+reference:
+  transcriptome_fasta: test-data/reference/transcriptome.fasta
+  gtf: test-data/reference/genes.gtf
+
+samples:
+  WT_REP1:
+    r1: test-data/fastq/SRR6357070_1.fastq.gz
+    r2: test-data/fastq/SRR6357070_2.fastq.gz

@@ -1,40 +1,79 @@
-configfile: "config.yaml"
+# No default configfile: always pass one explicitly, e.g.
+#   snakemake --configfile config.test.yaml --cores 4
+# A default here would get merged (not replaced) with whatever --configfile is
+# passed, silently unioning both configs' "samples" dicts.
+
+RESULTS = config["results_dir"]
 
 SAMPLES = list(config["samples"].keys())
+PE_SAMPLES = [s for s in SAMPLES if config["samples"][s].get("r2")]
+SE_SAMPLES = [s for s in SAMPLES if s not in PE_SAMPLES]
+
+# Regex alternation used to route each sample to its paired-end/single-end rule
+# variant. "(?!)" never matches, so an empty list doesn't turn into a
+# constraint that matches everything.
+PE_PATTERN = "|".join(PE_SAMPLES) if PE_SAMPLES else "(?!)"
+SE_PATTERN = "|".join(SE_SAMPLES) if SE_SAMPLES else "(?!)"
 
 
 rule all:
     input:
-        "results/counts/gene_counts.csv",
-        "results/qc/multiqc_report.html",
+        f"{RESULTS}/counts/gene_counts.csv",
+        f"{RESULTS}/qc/multiqc_report.html",
+
+
+def fastqc_raw_input(wc):
+    sample = config["samples"][wc.sample]
+    files = [sample["r1"]]
+    if sample.get("r2"):
+        files.append(sample["r2"])
+    return files
 
 
 rule fastqc_raw:
     input:
-        r1=lambda wc: config["samples"][wc.sample]["r1"],
-        r2=lambda wc: config["samples"][wc.sample]["r2"],
+        fastqc_raw_input,
     output:
-        directory("results/qc/fastqc_raw/{sample}"),
+        directory(f"{RESULTS}/qc/fastqc_raw/{{sample}}"),
     log:
         "logs/fastqc_raw/{sample}.log",
     shell:
-        "mkdir -p {output} && fastqc --outdir {output} {input.r1} {input.r2} > {log} 2>&1"
+        "mkdir -p {output} && fastqc --outdir {output} {input} > {log} 2>&1"
 
 
-rule fastp:
+rule fastp_pe:
     input:
         r1=lambda wc: config["samples"][wc.sample]["r1"],
         r2=lambda wc: config["samples"][wc.sample]["r2"],
     output:
-        r1="results/trimmed/{sample}_1.fastq.gz",
-        r2="results/trimmed/{sample}_2.fastq.gz",
-        json="results/qc/fastp/{sample}.json",
-        html="results/qc/fastp/{sample}.html",
+        r1=f"{RESULTS}/trimmed/{{sample}}_1.fastq.gz",
+        r2=f"{RESULTS}/trimmed/{{sample}}_2.fastq.gz",
+        json=f"{RESULTS}/qc/fastp/{{sample}}.json",
+        html=f"{RESULTS}/qc/fastp/{{sample}}.html",
     log:
         "logs/fastp/{sample}.log",
     threads: 4
+    wildcard_constraints:
+        sample=PE_PATTERN,
     shell:
         "fastp -i {input.r1} -I {input.r2} -o {output.r1} -O {output.r2} "
+        "-j {output.json} -h {output.html} -w {threads} > {log} 2>&1"
+
+
+rule fastp_se:
+    input:
+        r1=lambda wc: config["samples"][wc.sample]["r1"],
+    output:
+        r1=f"{RESULTS}/trimmed/{{sample}}.fastq.gz",
+        json=f"{RESULTS}/qc/fastp/{{sample}}.json",
+        html=f"{RESULTS}/qc/fastp/{{sample}}.html",
+    log:
+        "logs/fastp/{sample}.log",
+    threads: 4
+    wildcard_constraints:
+        sample=SE_PATTERN,
+    shell:
+        "fastp -i {input.r1} -o {output.r1} "
         "-j {output.json} -h {output.html} -w {threads} > {log} 2>&1"
 
 
@@ -42,7 +81,7 @@ rule salmon_index:
     input:
         fasta=config["reference"]["transcriptome_fasta"],
     output:
-        directory("results/salmon_index"),
+        directory(f"{RESULTS}/salmon_index"),
     log:
         "logs/salmon_index.log",
     threads: 4
@@ -50,20 +89,40 @@ rule salmon_index:
         "salmon index -t {input.fasta} -i {output} -p {threads} > {log} 2>&1"
 
 
-rule salmon_quant:
+rule salmon_quant_pe:
     input:
-        r1="results/trimmed/{sample}_1.fastq.gz",
-        r2="results/trimmed/{sample}_2.fastq.gz",
-        index="results/salmon_index",
+        r1=f"{RESULTS}/trimmed/{{sample}}_1.fastq.gz",
+        r2=f"{RESULTS}/trimmed/{{sample}}_2.fastq.gz",
+        index=f"{RESULTS}/salmon_index",
     output:
-        "results/salmon/{sample}/quant.sf",
+        f"{RESULTS}/salmon/{{sample}}/quant.sf",
     params:
-        outdir=lambda wc: f"results/salmon/{wc.sample}",
+        outdir=lambda wc: f"{RESULTS}/salmon/{wc.sample}",
     log:
         "logs/salmon_quant/{sample}.log",
     threads: 4
+    wildcard_constraints:
+        sample=PE_PATTERN,
     shell:
         "salmon quant -i {input.index} -l A -1 {input.r1} -2 {input.r2} "
+        "-p {threads} -o {params.outdir} > {log} 2>&1"
+
+
+rule salmon_quant_se:
+    input:
+        r1=f"{RESULTS}/trimmed/{{sample}}.fastq.gz",
+        index=f"{RESULTS}/salmon_index",
+    output:
+        f"{RESULTS}/salmon/{{sample}}/quant.sf",
+    params:
+        outdir=lambda wc: f"{RESULTS}/salmon/{wc.sample}",
+    log:
+        "logs/salmon_quant/{sample}.log",
+    threads: 4
+    wildcard_constraints:
+        sample=SE_PATTERN,
+    shell:
+        "salmon quant -i {input.index} -l A -r {input.r1} "
         "-p {threads} -o {params.outdir} > {log} 2>&1"
 
 
@@ -74,7 +133,7 @@ rule tx2gene:
     input:
         gtf=config["reference"]["gtf"],
     output:
-        "results/tx2gene.tsv",
+        f"{RESULTS}/tx2gene.tsv",
     log:
         "logs/tx2gene.log",
     shell:
@@ -83,10 +142,10 @@ rule tx2gene:
 
 rule gene_counts:
     input:
-        quant=expand("results/salmon/{sample}/quant.sf", sample=SAMPLES),
-        map="results/tx2gene.tsv",
+        quant=expand(f"{RESULTS}/salmon/{{sample}}/quant.sf", sample=SAMPLES),
+        map=f"{RESULTS}/tx2gene.tsv",
     output:
-        "results/counts/gene_counts.csv",
+        f"{RESULTS}/counts/gene_counts.csv",
     params:
         inputs=lambda wc, input: " ".join(f"-i {q}" for q in input.quant),
     log:
@@ -98,13 +157,16 @@ rule gene_counts:
 
 rule multiqc:
     input:
-        expand("results/qc/fastqc_raw/{sample}", sample=SAMPLES),
-        expand("results/qc/fastp/{sample}.json", sample=SAMPLES),
-        expand("results/salmon/{sample}/quant.sf", sample=SAMPLES),
+        expand(f"{RESULTS}/qc/fastqc_raw/{{sample}}", sample=SAMPLES),
+        expand(f"{RESULTS}/qc/fastp/{{sample}}.json", sample=SAMPLES),
+        expand(f"{RESULTS}/salmon/{{sample}}/quant.sf", sample=SAMPLES),
     output:
-        "results/qc/multiqc_report.html",
+        f"{RESULTS}/qc/multiqc_report.html",
+    params:
+        results_dir=RESULTS,
     log:
         "logs/multiqc.log",
     shell:
-        "multiqc results/qc results/salmon --outdir results/qc "
+        "multiqc {params.results_dir}/qc {params.results_dir}/salmon "
+        "--outdir {params.results_dir}/qc "
         "--filename multiqc_report.html --force > {log} 2>&1"

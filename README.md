@@ -34,6 +34,11 @@ The gene-counting step (transcript→gene mapping) assumes a standard GTF with
 has. A GFF3 or nonstandard GTF may need extra options — see the comment on the
 `tx2gene` rule in the `Snakefile`.
 
+This fixture is used by `config.test.yaml`, the config for testing the pipeline
+itself. To run against a real dataset, create your own config file (see "Running
+the workflow" below) pointing at your own samples and reference — it isn't tied to
+the pipeline.
+
 The files are checked into the repo (small enough, ~350KB) so the workflow is
 reproducible without a network dependency. To re-fetch them if needed:
 
@@ -54,16 +59,25 @@ conda env create -f environment.yml
 conda activate rnaseq-workflow
 ```
 
-Then run the pipeline (adjust `--cores` to what's available):
+Then run the pipeline, always passing an explicit `--configfile` (there's no
+default — see below) and adjusting `--cores` to what's available:
 
 ```bash
-snakemake --cores 4
+snakemake --configfile config.test.yaml --cores 4
 ```
 
-Samples and reference paths are defined in `config.yaml`. Outputs:
+For a real dataset, copy `config.test.yaml` to your own config file and point it at
+your samples/reference — give it its own `results_dir` (e.g. `results/<name>/`) so
+different runs never mix or overwrite each other's outputs. Within a config's
+`results_dir`:
 
-- `results/counts/gene_counts.csv` — the gene-level count matrix.
-- `results/qc/multiqc_report.html` — aggregated QC (FastQC, fastp, Salmon).
+- `counts/gene_counts.csv` — the gene-level count matrix.
+- `qc/multiqc_report.html` — aggregated QC (FastQC, fastp, Salmon).
+
+Snakemake merges (rather than replaces) a `--configfile` with any default set via a
+`configfile:` directive in the `Snakefile` — which is why there isn't one; passing
+`--configfile` is required, and omitting it fails fast with a clear error rather than
+silently mixing two configs' samples together.
 
 The pipeline: FastQC (raw QC) → fastp (trimming) → Salmon (pseudo-alignment +
 transcript quantification) → pytximport (gene-level summarization) → MultiQC
