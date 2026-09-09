@@ -68,6 +68,9 @@ rule salmon_quant:
 
 
 rule tx2gene:
+    # Assumes a standard GTF with `transcript_id`/`gene_id` attributes (e.g. Ensembl-style).
+    # A GFF3 (`ID`/`Parent`-style) or nonstandard GTF would need
+    # `--source-field`/`--target-field` passed to `pytximport create-map`.
     input:
         gtf=config["reference"]["gtf"],
     output:

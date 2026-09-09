@@ -29,6 +29,11 @@ used by Salmon and the gene-counting step. Note: this is fixture data for testin
 workflow, not necessarily the reference you'd use for a real analysis — swap the
 paths in `config.yaml` to point at your own reference instead.
 
+The gene-counting step (transcript→gene mapping) assumes a standard GTF with
+`transcript_id`/`gene_id` attributes (e.g. Ensembl-style), which this fixture GTF
+has. A GFF3 or nonstandard GTF may need extra options — see the comment on the
+`tx2gene` rule in the `Snakefile`.
+
 The files are checked into the repo (small enough, ~350KB) so the workflow is
 reproducible without a network dependency. To re-fetch them if needed:
 
