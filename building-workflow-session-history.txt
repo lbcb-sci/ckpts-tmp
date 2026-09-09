@@ -1,0 +1,2377 @@
+ ▐▛███▛█   Claude Code v2.1.263
+▝▜██████▀  Sonnet 5 · Claude Max
+  ▝▝ ▝▝    ~/projects/workshop/building-workflows-rc1
+
+  Fable 5.1 writes better code and reports progress on long tasks. Switch anytime with /model.
+
+❯ /model                                                                        
+  ⎿  Set model to Sonnet 5 and saved as your default for new sessions
+
+❯ Suggest me 2-3 options for a small RNA-Seq dataset in FASTQ format. FASTQ     
+  should be smaller than 50MB, and it will be used as a test dataset to build a 
+  first, simple version of the workflow. For every suggested dataset give me    
+  reasons why you suggested it. Do not download anything before my approval.    
+
+  Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+● Based on the README (raw reads → QC → gene-level counts, no DE analysis,
+  simple local workflow), here are three good candidates for a small FASTQ test
+  dataset:
+
+  1. nf-core/test-datasets (rnaseq branch)
+
+  - What it is: Paired-end FASTQ files purpose-built for testing RNA-seq
+    pipelines (subsampled reads mapping to a small region, typically chr21 or
+    similar).
+  - Why suggested: It's designed for exactly this use case — validating a
+    pipeline's mechanics (QC → alignment/quantification → counts) rather than
+    doing real biology. Files are typically a few MB gzipped, well under the
+    50MB limit, and pair naturally with a matching small reference genome subset
+    also hosted in that repo, so you can build and test the whole pipeline
+    end-to-end without downloading a full genome.
+  - Tradeoff: Reads are already trimmed/curated for testing, so it's less
+    representative of "messy" real-world raw reads (e.g., adapter contamination,
+    variable quality) — less useful if you want to demo QC steps catching real
+    issues.
+
+  2. Galaxy Training Network (GTN) RNA-seq tutorial data
+
+  - What it is: FASTQ subsets used in the GTN's "RNA-seq reads to counts"
+    tutorial, hosted on Zenodo.
+  - Why suggested: It's explicitly built around the same task shape as your
+    README (raw reads → QC → gene counts), comes with a documented expected
+    pipeline and known-good output, so you have a reference to sanity-check your
+    own results against. Good size (small MB range), realistic (based on real
+    biological data, subsampled).
+  - Tradeoff: Requires pulling from Zenodo (fine, just noting it's a different
+    host than GitHub).
+
+  3. Griffith Lab RNA-seq tutorial data (chr22 subset)
+
+  - What it is: A widely used teaching dataset (HCC1395 or similar) subsampled
+    to reads aligning to chromosome 22 only.
+  - Why suggested: Very well documented with a full walkthrough (useful if you
+    get stuck), realistic paired-end human RNA-seq characteristics, and
+    restricting to one chromosome keeps both the FASTQ and the reference genome
+    small enough for fast local iteration.
+  - Tradeoff: Tutorial-oriented framing may include assumptions (e.g., specific
+    reference build) you'll want to double check against your own pipeline
+    design.
+
+  My recommendation: Option 1 (nf-core test-datasets) is the best fit for a
+  first, simple version — it's minimal, purpose-built for pipeline mechanics,
+  and pairs with a matching tiny reference, so you can get an end-to-end run
+  working fastest. Option 2 is a strong second choice once you want to validate
+  against known-good output.
+
+  Let me know which one (or if you want me to check exact file sizes / URLs
+  first) before I download anything.
+
+✻ Crunched for 28s · done Tuesday 6:12 AM
+
+❯ Go with option 1, download it                                                 
+
+  Listed 1 directory, ran 4 shell commands (ctrl+o to expand)
+
+● I'll download one representative paired-end sample (WT_REP1 / SRR6357070) from
+  that dataset — it's the first sample in nf-core's own official test
+  samplesheet for this pipeline, so it's a proven minimal starting point.
+  Downloading all 7 samples would total ~50MB+ on its own, more than needed to
+  build a first simple version.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Downloaded and verified successfully — both files are valid gzip, paired R1/R2
+  with matching read counts (50,000 reads each), total 4.3MB, well under the
+  50MB limit. It's S. cerevisiae (yeast) data (kraken:taxid|4932), which fits
+  well with a "simple, local" workflow since the genome/annotation are small
+  too.
+
+● Write(.gitignore)
+  ⎿  Wrote 1 line to .gitignore
+      1 data/
+
+● Update(README.md)
+  ⎿  Added 16 lines
+      14  - Quality-control information should be generated and summarize
+          d.
+      15  - The workflow should remain reasonably simple and suitable for
+           local execution.
+      16  - Differential expression analysis is outside the scope of the 
+          initial version.
+      17 +                                                               
+      18 +## Test data                                                   
+      19 +                                                               
+      20 +`data/fastq/SRR6357070_{1,2}.fastq.gz` is a small paired-end *S
+         +. cerevisiae* RNA-seq                                          
+      21 +sample (50,000 read pairs, ~4.3MB total) used to build and exer
+         +cise a first, simple                                           
+      22 +version of the workflow. It's the `WT_REP1` sample from nf-core
+         +'s official                                                    
+      23 +[rnaseq test dataset](https://github.com/nf-core/test-datasets/
+         +tree/rnaseq/testdata/GSE110004)                                
+      24 +(original source: GEO [GSE110004](https://www.ncbi.nlm.nih.gov/
+         +geo/query/acc.cgi?acc=GSE110004)).                             
+      25 +                                                               
+      26 +`data/` is gitignored since it's downloadable test input, not p
+         +roject source. To fetch it again:                              
+      27 +                                                               
+      28 +```bash                                                        
+      29 +mkdir -p data/fastq                                            
+      30 +curl -sL -o data/fastq/SRR6357070_1.fastq.gz "https://raw.githu
+         +busercontent.com/nf-core/test-datasets/rnaseq/testdata/GSE11000
+         +4/SRR6357070_1.fastq.gz"                                       
+      31 +curl -sL -o data/fastq/SRR6357070_2.fastq.gz "https://raw.githu
+         +busercontent.com/nf-core/test-datasets/rnaseq/testdata/GSE11000
+         +4/SRR6357070_2.fastq.gz"                                       
+      32 +```                                                            
+
+● Downloaded the test dataset and documented it:
+
+  - Data: data/fastq/SRR6357070_1.fastq.gz + _2.fastq.gz — 50,000 paired-end
+    reads, 4.3MB total, yeast (S. cerevisiae) RNA-seq (WT_REP1 sample from
+    nf-core's official rnaseq test set, source GEO GSE110004).
+  - .gitignore: added data/ — it's downloadable input, not project source, so it
+    stays out of version control.
+  - README.md: added a "Test data" section documenting what it is, where it's
+    from, and the exact curl commands to re-fetch it.
+
+  Next step would be building the first simple pipeline stage (e.g., QC) against
+  this data — let me know when you're ready.
+
+✻ Crunched for 1m 2s · done Tuesday 6:15 AM
+
+❯ /btw 
+  ⎿  Usage: /btw <your question>
+
+❯ Maybe it can be stored directly on GH since it is only 4.3 MB in total.       
+
+● Good point — 4.3MB is trivial and having it checked in makes the repo
+  self-contained (no network dependency to reproduce). I'll switch to committing
+  it.
+
+  Read 1 file (ctrl+o to expand)
+
+● Write(.gitignore)
+  ⎿  Removed 1 line
+      1 -data/                                                           
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Now update the README to reflect that the data is checked in rather than
+  gitignored.
+
+● Update(README.md)
+  ⎿  Added 2 lines, removed 1 line
+      23  [rnaseq test dataset](https://github.com/nf-core/test-datasets/
+          tree/rnaseq/testdata/GSE110004)
+      24  (original source: GEO [GSE110004](https://www.ncbi.nlm.nih.gov/
+          geo/query/acc.cgi?acc=GSE110004)).
+      25  
+      26 -`data/` is gitignored since it's downloadable test input, not p
+         -roject source. To fetch it again:                              
+      26 +The files are checked into the repo (small enough at 4.3MB) so 
+         +the workflow is                                                
+      27 +reproducible without a network dependency. To re-fetch them if 
+         +needed:                                                        
+      28  
+      29  ```bash
+      30  mkdir -p data/fastq
+
+● Removed .gitignore (nothing left to ignore) and updated the README to say the
+  FASTQ files are checked into the repo rather than gitignored. The files
+  themselves are untouched. Let me know if you'd like me to commit this.
+
+✻ Cooked for 17s · done Tuesday 6:29 AM
+
+❯ Make a plan for a simple RNA-Seq workflow that process RNA-seq data and       
+  produces gene-level count matrix. Do not run anything before my approval.     
+
+● Entered plan mode
+  Claude is now exploring and designing an implementation approach.
+
+  Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+● User answered Claude's questions:
+  ⎿  · How should the workflow be orchestrated for this first simple version? → 
+     Snakemake
+
+  Ran 1 shell command (ctrl+o to expand)
+● Updated plan
+  ⎿  /plan to preview
+  ⎿  User rejected Claude's plan:
+     ╭─────────────────────────────────────────────────────────────────────────╮
+     │ Simple RNA-seq Workflow (Snakemake, first version)                      │
+     │                                                                         │
+     │ Context                                                                 │
+     │                                                                         │
+     │ The README defines the goal: turn raw RNA-seq FASTQ reads into a        │
+     │ quality-controlled,                                                     │
+     │ gene-level count matrix, with QC summarized alongside the results. DE   │
+     │ analysis is                                                             │
+     │ explicitly out of scope. We already have a small paired-end test sample │
+     │ (data/fastq/SRR6357070_{1,2}.fastq.gz, yeast, 50k read pairs) checked   │
+     │ into the repo.                                                          │
+     │                                                                         │
+     │ The user chose Snakemake as the orchestration tool (over a plain shell  │
+     │ script or                                                               │
+     │ Nextflow) for dependency-aware, incremental, multi-sample-ready         │
+     │ execution.                                                              │
+     │                                                                         │
+     │ This plan covers a first, minimal but complete Snakemake pipeline: raw  │
+     │ QC → trimming →                                                         │
+     │ alignment → gene counting → aggregated QC report. No workflow code      │
+     │ exists yet in the                                                       │
+     │ repo, so this is a from-scratch build following standard, widely-taught │
+     │ RNA-seq                                                                 │
+     │ practice (comparable to nf-core/rnaseq's star/hisat2 + featureCounts    │
+     │ path), kept as                                                          │
+     │ simple as possible per CLAUDE.md.                                       │
+     │                                                                         │
+     │ Reference genome/annotation                                             │
+     │                                                                         │
+     │ The test FASTQ is nf-core's own WT_REP1 test sample, which pairs with a │
+     │ small                                                                   │
+     │ pre-subsetted yeast reference in the same nf-core/test-datasets repo    │
+     │ (rnaseq                                                                 │
+     │ branch, reference/ folder): genome.fasta (234KB) and genes.gtf (204KB). │
+     │ These are                                                               │
+     │ tiny and match the reads' region, so alignment will work correctly.     │
+     │ They'll be                                                              │
+     │ downloaded and checked into reference/genome.fasta and                  │
+     │ reference/genes.gtf (same                                               │
+     │ rationale as the FASTQ: small enough to commit, keeps the repo          │
+     │ reproducible without                                                    │
+     │ a network dependency).                                                  │
+     │                                                                         │
+     │ Tool choices                                                            │
+     │                                                                         │
+     │ - FastQC — raw-read QC.                                                 │
+     │ - fastp — adapter/quality trimming; also emits its own QC report        │
+     │   (JSON+HTML),                                                          │
+     │   used both for cleaning reads and as a second QC data source for       │
+     │   MultiQC.                                                              │
+     │ - HISAT2 — splice-aware alignment. Chosen over STAR: STAR requires      │
+     │   manually                                                              │
+     │   tuning --genomeSAindexNbases for small genomes (a common gotcha) or   │
+     │   it                                                                    │
+     │   warns/fails; HISAT2 has no such requirement, making it more foolproof │
+     │   for a small                                                           │
+     │   test genome and simpler to teach.                                     │
+     │ - samtools — sort/index the alignment output.                           │
+     │ - featureCounts (Subread) — gene-level read counting from BAM + GTF,    │
+     │   run                                                                   │
+     │   unstranded (-s 0) by default. Assumption: the test sample's real      │
+     │   strandedness                                                          │
+     │   protocol isn't known/verified; unstranded is the simplest correct     │
+     │   default for a                                                         │
+     │   first version and doesn't affect the pipeline's mechanics. Documented │
+     │   as a known                                                            │
+     │   limitation, not fixed now (strandedness auto-detection would be a     │
+     │   follow-up).                                                           │
+     │ - MultiQC — aggregates FastQC, fastp, HISAT2, and featureCounts logs    │
+     │   into one                                                              │
+     │   summary HTML report (satisfies the "QC summary" requirement).         │
+     │                                                                         │
+     │ All tools installed via one root environment.yml (conda/bioconda),      │
+     │ activated once                                                          │
+     │ before running Snakemake — no per-rule conda envs, to keep the first    │
+     │ version simple.                                                         │
+     │                                                                         │
+     │ Files to create                                                         │
+     │                                                                         │
+     │ - environment.yml — conda env with snakemake-minimal, fastqc, fastp,    │
+     │   hisat2, samtools, subread, multiqc.                                   │
+     │ - reference/genome.fasta, reference/genes.gtf — downloaded as described │
+     │   above.                                                                │
+     │ - config.yaml — sample definitions, e.g.:                               │
+     │ samples:                                                                │
+     │   WT_REP1:                                                              │
+     │     r1: data/fastq/SRR6357070_1.fastq.gz                                │
+     │     r2: data/fastq/SRR6357070_2.fastq.gz                                │
+     │   Keyed by sample so adding more samples later is a config-only change. │
+     │ - Snakefile — rules, one per pipeline stage, all outputs under          │
+     │   results/:                                                             │
+     │   a. fastqc_raw — FastQC on each raw R1/R2 → results/qc/fastqc_raw/     │
+     │   b. fastp — trim data/fastq/{sample}_{1,2}.fastq.gz →                  │
+     │      results/trimmed/{sample}_{1,2}.fastq.gz +                          │
+     │      results/qc/fastp/{sample}.{json,html}                              │
+     │   c. hisat2_index — build index from reference/genome.fasta →           │
+     │      results/index/genome.*.ht2                                         │
+     │   d. hisat2_align — align trimmed reads → coordinate-sorted BAM         │
+     │      results/align/{sample}.sorted.bam + alignment summary log          │
+     │      results/qc/hisat2/{sample}.log                                     │
+     │   e. samtools_index — results/align/{sample}.sorted.bam.bai             │
+     │   f. featurecounts — BAM + reference/genes.gtf →                        │
+     │      results/counts/gene_counts.tsv (+ .summary) — the gene-level count │
+     │      matrix                                                             │
+     │      (one column per sample; only one column for now)                   │
+     │   g. multiqc — scans results/qc/ and the featureCounts summary →        │
+     │      results/qc/multiqc_report.html                                     │
+     │   h. all (default target) — depends on the count matrix + MultiQC       │
+     │      report.                                                            │
+     │ - .gitignore — add results/ (regenerable outputs; unlike the tiny fixed │
+     │   test                                                                  │
+     │   inputs, this can grow and shouldn't be committed).                    │
+     │                                                                         │
+     │ Files to modify                                                         │
+     │                                                                         │
+     │ - README.md — add a short "Running the workflow" section: environment   │
+     │   setup                                                                 │
+     │   (conda env create -f environment.yml), and the run command            │
+     │   (snakemake --cores <N>), and note the output location                 │
+     │   (results/counts/gene_counts.tsv, results/qc/multiqc_report.html).     │
+     │                                                                         │
+     │ Verification                                                            │
+     │                                                                         │
+     │ 1. snakemake -n (dry run) — confirm the DAG builds with no missing      │
+     │    inputs/rules,                                                        │
+     │    and shows the expected 8 jobs for the single sample.                 │
+     │ 2. conda env create -f environment.yml && conda activate <env> then     │
+     │    snakemake --cores 2 — run the full pipeline end-to-end.              │
+     │ 3. Confirm results/counts/gene_counts.tsv exists, has a header + gene   │
+     │    rows, and a                                                          │
+     │    non-trivial number of genes have nonzero counts (sanity check        │
+     │    against total input                                                  │
+     │    read count).                                                         │
+     │ 4. Confirm results/qc/multiqc_report.html opens and includes sections   │
+     │    for FastQC,                                                          │
+     │    fastp, HISAT2 alignment rate, and featureCounts assignment summary.  │
+     │ 5. Re-run snakemake --cores 2 a second time with no changes — confirm   │
+     │    Snakemake                                                            │
+     │    reports everything up to date (nothing re-executed), validating      │
+     │    correct                                                              │
+     │    input/output declarations.                                           │
+     ╰─────────────────────────────────────────────────────────────────────────╯
+
+● Updated plan
+  ⎿  /plan to preview
+  ⎿  User rejected Claude's plan:
+     ╭─────────────────────────────────────────────────────────────────────────╮
+     │ Simple RNA-seq Workflow (Snakemake + Salmon, first version)             │
+     │                                                                         │
+     │ Context                                                                 │
+     │                                                                         │
+     │ The README defines the goal: turn raw RNA-seq FASTQ reads into a        │
+     │ quality-controlled,                                                     │
+     │ gene-level count matrix, with QC summarized alongside the results. DE   │
+     │ analysis is                                                             │
+     │ explicitly out of scope. We already have a small paired-end test sample │
+     │ (data/fastq/SRR6357070_{1,2}.fastq.gz, yeast, 50k read pairs) checked   │
+     │ into the repo.                                                          │
+     │                                                                         │
+     │ Decisions made with the user for this revision:                         │
+     │ - Snakemake for orchestration (dependency-aware, incremental,           │
+     │   multi-sample-ready).                                                  │
+     │ - Salmon (pseudo-alignment + quantification) instead of a genome        │
+     │   aligner +                                                             │
+     │   featureCounts — simpler (no genome index/BAM sorting step), faster,   │
+     │   and standard                                                          │
+     │   for count-matrix-only workflows that don't need read-level alignment  │
+     │   positions.                                                            │
+     │ - pytximport to summarize Salmon's transcript-level quantification to   │
+     │   the                                                                   │
+     │   gene-level count matrix the README requires.                          │
+     │ - Repo structure fix: a plain top-level reference/ folder would wrongly │
+     │   imply                                                                 │
+     │   it holds the canonical reference for the workflow. It doesn't — it's  │
+     │   just the                                                              │
+     │   fixture paired with the test FASTQ. Test fixtures (FASTQ + reference) │
+     │   are grouped                                                           │
+     │   together under one clearly-scoped directory, and the workflow itself  │
+     │   treats                                                                │
+     │   reference/sample paths as config-driven, not hardcoded.               │
+     │                                                                         │
+     │ Repo structure change                                                   │
+     │                                                                         │
+     │ Rename data/ → test-data/ (git mv, preserves history) and add a         │
+     │ reference                                                               │
+     │ subfolder there:                                                        │
+     │                                                                         │
+     │ test-data/                                                              │
+     │   fastq/                                                                │
+     │     SRR6357070_1.fastq.gz                                               │
+     │     SRR6357070_2.fastq.gz                                               │
+     │   reference/                                                            │
+     │     transcriptome.fasta   # transcript-level FASTA (Salmon indexes      │
+     │ transcripts, not the genome)                                            │
+     │     genes.gtf             # used to derive the transcript→gene mapping  │
+     │                                                                         │
+     │ config.yaml (new) is the single place that names which FASTQ/reference  │
+     │ paths the                                                               │
+     │ workflow runs against — for now it points at test-data/, but nothing in │
+     │ the                                                                     │
+     │ Snakefile hardcodes that directory, so pointing it at a real dataset    │
+     │ later is a                                                              │
+     │ config-only change, not a structural one.                               │
+     │                                                                         │
+     │ Reference files                                                         │
+     │                                                                         │
+     │ Both come from the same nf-core/test-datasets (rnaseq branch,           │
+     │ reference/                                                              │
+     │ folder) that the test FASTQ itself is drawn from, so they're guaranteed │
+     │ to match:                                                               │
+     │ transcriptome.fasta (155KB) and genes.gtf (204KB). Tiny enough to check │
+     │ into git,                                                               │
+     │ same rationale as the FASTQ (reproducible without a network             │
+     │ dependency).                                                            │
+     │                                                                         │
+     │ Tool choices                                                            │
+     │                                                                         │
+     │ - FastQC — raw-read QC.                                                 │
+     │ - fastp — adapter/quality trimming; also emits its own QC report        │
+     │   (JSON+HTML).                                                          │
+     │ - Salmon — index the transcriptome once, then quantify each sample's    │
+     │   trimmed                                                               │
+     │   reads directly (mapping-based mode, library type auto-detected with   │
+     │   -l A) →                                                               │
+     │   per-sample quant.sf (transcript-level counts/TPM). No genome          │
+     │   alignment, no BAM.                                                    │
+     │   Simplification: a plain (non-decoy-aware) transcriptome index is used │
+     │   for this                                                              │
+     │   first version — decoy-aware indexing (adding the genome as a decoy)   │
+     │   improves                                                              │
+     │   specificity but needs the genome FASTQ too; noted as a future         │
+     │   enhancement, not                                                      │
+     │   required for a first working version.                                 │
+     │ - pytximport — reads all samples' quant.sf + a transcript→gene mapping, │
+     │   outputs the gene-level count matrix.                                  │
+     │ - MultiQC — aggregates FastQC, fastp, and Salmon logs into one summary  │
+     │   HTML                                                                  │
+     │   report (satisfies the "QC summary" requirement).                      │
+     │                                                                         │
+     │ All tools installed via one root environment.yml (conda/bioconda + pip  │
+     │ for                                                                     │
+     │ pytximport), activated once before running Snakemake — no per-rule      │
+     │ conda envs, to                                                          │
+     │ keep this first version simple.                                         │
+     │                                                                         │
+     │ Files to create                                                         │
+     │                                                                         │
+     │ - environment.yml — snakemake-minimal, fastqc, fastp, salmon, multiqc,  │
+     │   python, pandas, and pytximport (pip).                                 │
+     │ - test-data/reference/transcriptome.fasta,                              │
+     │   test-data/reference/genes.gtf —                                       │
+     │   downloaded as described above.                                        │
+     │ - config.yaml:                                                          │
+     │ reference:                                                              │
+     │   transcriptome_fasta: test-data/reference/transcriptome.fasta          │
+     │   gtf: test-data/reference/genes.gtf                                    │
+     │ samples:                                                                │
+     │   WT_REP1:                                                              │
+     │     r1: test-data/fastq/SRR6357070_1.fastq.gz                           │
+     │     r2: test-data/fastq/SRR6357070_2.fastq.gz                           │
+     │ - Snakefile — rules, all outputs under results/:                        │
+     │   a. fastqc_raw — FastQC on each raw R1/R2 → results/qc/fastqc_raw/     │
+     │   b. fastp — trim {sample}_{1,2}.fastq.gz (paths from config) →         │
+     │      results/trimmed/{sample}_{1,2}.fastq.gz +                          │
+     │      results/qc/fastp/{sample}.{json,html}                              │
+     │   c. salmon_index — build index from                                    │
+     │      config["reference"]["transcriptome_fasta"]                         │
+     │      → results/salmon_index/                                            │
+     │   d. salmon_quant — quantify each sample's trimmed reads →              │
+     │      results/salmon/{sample}/quant.sf + Salmon logs (consumed by        │
+     │      MultiQC)                                                           │
+     │   e. tx2gene — derive a transcript→gene mapping from                    │
+     │      config["reference"]["gtf"] → results/tx2gene.tsv                   │
+     │   f. gene_counts — pytximport combines all samples' quant.sf +          │
+     │      tx2gene.tsv →                                                      │
+     │      results/counts/gene_counts.tsv (the gene-level count matrix; one   │
+     │      column per                                                         │
+     │      sample, one column for now)                                        │
+     │   g. multiqc — scans results/qc/ and results/salmon/ →                  │
+     │      results/qc/multiqc_report.html                                     │
+     │   h. all (default target) — depends on the count matrix + MultiQC       │
+     │      report.                                                            │
+     │ - .gitignore — add results/ (regenerable outputs, unlike the small      │
+     │   fixed test                                                            │
+     │   fixtures, which stay committed).                                      │
+     │                                                                         │
+     │ Files to modify                                                         │
+     │                                                                         │
+     │ - README.md — update the existing "Test data" section's paths from      │
+     │   data/fastq/                                                           │
+     │   to test-data/fastq/, mention the new test-data/reference/ fixture,    │
+     │   and add a                                                             │
+     │   "Running the workflow" section: environment setup                     │
+     │   (conda env create -f environment.yml), run command (snakemake --cores │
+     │   <N>),                                                                 │
+     │   and output locations (results/counts/gene_counts.tsv,                 │
+     │   results/qc/multiqc_report.html).                                      │
+     │                                                                         │
+     │ Verification                                                            │
+     │                                                                         │
+     │ 1. snakemake -n (dry run) — confirm the DAG builds with no missing      │
+     │    inputs/rules,                                                        │
+     │    and shows the expected jobs for the single sample.                   │
+     │ 2. conda env create -f environment.yml && conda activate <env> then     │
+     │    snakemake --cores 2 — run the full pipeline end-to-end.              │
+     │ 3. Confirm results/counts/gene_counts.tsv exists, has a header + gene   │
+     │    rows, and a                                                          │
+     │    non-trivial number of genes have nonzero counts (sanity check        │
+     │    against total input                                                  │
+     │    read count).                                                         │
+     │ 4. Confirm results/qc/multiqc_report.html opens and includes sections   │
+     │    for FastQC,                                                          │
+     │    fastp, and Salmon mapping rate.                                      │
+     │ 5. Re-run snakemake --cores 2 a second time with no changes — confirm   │
+     │    Snakemake                                                            │
+     │    reports everything up to date (nothing re-executed), validating      │
+     │    correct                                                              │
+     │    input/output declarations.                                           │
+     ╰─────────────────────────────────────────────────────────────────────────╯
+
+● Updated plan
+  ⎿  /plan to preview
+  ⎿  User rejected Claude's plan:
+     ╭─────────────────────────────────────────────────────────────────────────╮
+     │ Simple RNA-seq Workflow (Snakemake + Salmon, first version)             │
+     │                                                                         │
+     │ Context                                                                 │
+     │                                                                         │
+     │ The README defines the goal: turn raw RNA-seq FASTQ reads into a        │
+     │ quality-controlled,                                                     │
+     │ gene-level count matrix, with QC summarized alongside the results. DE   │
+     │ analysis is                                                             │
+     │ explicitly out of scope. We already have a small paired-end test sample │
+     │ (data/fastq/SRR6357070_{1,2}.fastq.gz, yeast, 50k read pairs) checked   │
+     │ into the repo.                                                          │
+     │                                                                         │
+     │ Decisions made with the user for this revision:                         │
+     │ - Snakemake for orchestration (dependency-aware, incremental,           │
+     │   multi-sample-ready).                                                  │
+     │ - Salmon (pseudo-alignment + quantification) instead of a genome        │
+     │   aligner +                                                             │
+     │   featureCounts — simpler (no genome index/BAM sorting step), faster,   │
+     │   and standard                                                          │
+     │   for count-matrix-only workflows that don't need read-level alignment  │
+     │   positions.                                                            │
+     │ - pytximport to summarize Salmon's transcript-level quantification to   │
+     │   the                                                                   │
+     │   gene-level count matrix the README requires.                          │
+     │ - Repo structure fix: a plain top-level reference/ folder would wrongly │
+     │   imply                                                                 │
+     │   it holds the canonical reference for the workflow. It doesn't — it's  │
+     │   just the                                                              │
+     │   fixture paired with the test FASTQ. Test fixtures (FASTQ + reference) │
+     │   are grouped                                                           │
+     │   together under one clearly-scoped directory, and the workflow itself  │
+     │   treats                                                                │
+     │   reference/sample paths as config-driven, not hardcoded.               │
+     │                                                                         │
+     │ Repo structure change                                                   │
+     │                                                                         │
+     │ Rename data/ → test-data/ (git mv, preserves history) and add a         │
+     │ reference                                                               │
+     │ subfolder there:                                                        │
+     │                                                                         │
+     │ test-data/                                                              │
+     │   fastq/                                                                │
+     │     SRR6357070_1.fastq.gz                                               │
+     │     SRR6357070_2.fastq.gz                                               │
+     │   reference/                                                            │
+     │     transcriptome.fasta   # transcript-level FASTA (Salmon indexes      │
+     │ transcripts, not the genome)                                            │
+     │     genes.gtf             # used to derive the transcript→gene mapping  │
+     │                                                                         │
+     │ config.yaml (new) is the single place that names which FASTQ/reference  │
+     │ paths the                                                               │
+     │ workflow runs against — for now it points at test-data/, but nothing in │
+     │ the                                                                     │
+     │ Snakefile hardcodes that directory, so pointing it at a real dataset    │
+     │ later is a                                                              │
+     │ config-only change, not a structural one.                               │
+     │                                                                         │
+     │ Reference files                                                         │
+     │                                                                         │
+     │ Both come from the same nf-core/test-datasets (rnaseq branch,           │
+     │ reference/                                                              │
+     │ folder) that the test FASTQ itself is drawn from, so they're guaranteed │
+     │ to match:                                                               │
+     │ transcriptome.fasta (155KB) and genes.gtf (204KB). Tiny enough to check │
+     │ into git,                                                               │
+     │ same rationale as the FASTQ (reproducible without a network             │
+     │ dependency).                                                            │
+     │                                                                         │
+     │ Tool choices                                                            │
+     │                                                                         │
+     │ - FastQC — raw-read QC.                                                 │
+     │ - fastp — adapter/quality trimming; also emits its own QC report        │
+     │   (JSON+HTML).                                                          │
+     │ - Salmon — index the transcriptome once, then quantify each sample's    │
+     │   trimmed                                                               │
+     │   reads directly (mapping-based mode, library type auto-detected with   │
+     │   -l A) →                                                               │
+     │   per-sample quant.sf (transcript-level counts/TPM). No genome          │
+     │   alignment, no BAM.                                                    │
+     │   Simplification: a plain (non-decoy-aware) transcriptome index is used │
+     │   for this                                                              │
+     │   first version — decoy-aware indexing (adding the genome as a decoy)   │
+     │   improves                                                              │
+     │   specificity but needs the genome FASTQ too; noted as a future         │
+     │   enhancement, not                                                      │
+     │   required for a first working version.                                 │
+     │ - pytximport — reads all samples' quant.sf + a transcript→gene mapping, │
+     │   outputs the gene-level count matrix.                                  │
+     │ - MultiQC — aggregates FastQC, fastp, and Salmon logs into one summary  │
+     │   HTML                                                                  │
+     │   report (satisfies the "QC summary" requirement).                      │
+     │                                                                         │
+     │ All tools installed via one root environment.yml (conda/bioconda + pip  │
+     │ for                                                                     │
+     │ pytximport), activated once before running Snakemake — no per-rule      │
+     │ conda envs, to                                                          │
+     │ keep this first version simple.                                         │
+     │                                                                         │
+     │ Files to create                                                         │
+     │                                                                         │
+     │ - environment.yml — snakemake-minimal, fastqc, fastp, salmon, multiqc,  │
+     │   python, pandas, and pytximport (pip).                                 │
+     │ - test-data/reference/transcriptome.fasta,                              │
+     │   test-data/reference/genes.gtf —                                       │
+     │   downloaded as described above.                                        │
+     │ - config.yaml:                                                          │
+     │ reference:                                                              │
+     │   transcriptome_fasta: test-data/reference/transcriptome.fasta          │
+     │   gtf: test-data/reference/genes.gtf                                    │
+     │ samples:                                                                │
+     │   WT_REP1:                                                              │
+     │     r1: test-data/fastq/SRR6357070_1.fastq.gz                           │
+     │     r2: test-data/fastq/SRR6357070_2.fastq.gz                           │
+     │ - Snakefile — rules, all outputs under results/:                        │
+     │   a. fastqc_raw — FastQC on each raw R1/R2 → results/qc/fastqc_raw/     │
+     │   b. fastp — trim {sample}_{1,2}.fastq.gz (paths from config) →         │
+     │      results/trimmed/{sample}_{1,2}.fastq.gz +                          │
+     │      results/qc/fastp/{sample}.{json,html}                              │
+     │   c. salmon_index — build index from                                    │
+     │      config["reference"]["transcriptome_fasta"]                         │
+     │      → results/salmon_index/                                            │
+     │   d. salmon_quant — quantify each sample's trimmed reads →              │
+     │      results/salmon/{sample}/quant.sf + Salmon logs (consumed by        │
+     │      MultiQC)                                                           │
+     │   e. tx2gene — derive a transcript→gene mapping from                    │
+     │      config["reference"]["gtf"] → results/tx2gene.tsv                   │
+     │   f. gene_counts — pytximport combines all samples' quant.sf +          │
+     │      tx2gene.tsv →                                                      │
+     │      results/counts/gene_counts.tsv (the gene-level count matrix; one   │
+     │      column per                                                         │
+     │      sample, one column for now)                                        │
+     │   g. multiqc — scans results/qc/ and results/salmon/ →                  │
+     │      results/qc/multiqc_report.html                                     │
+     │   h. all (default target) — depends on the count matrix + MultiQC       │
+     │      report.                                                            │
+     │ - .gitignore (recreated — removed earlier when it only contained the    │
+     │   now-committed                                                         │
+     │   data/ test fixtures) — covering the artifacts this workflow will      │
+     │   generate:                                                             │
+     │   - results/ — regenerable pipeline outputs, unlike the small fixed     │
+     │     test fixtures,                                                      │
+     │     which stay committed.                                               │
+     │   - .snakemake/ — Snakemake's internal working/metadata/lock directory. │
+     │   - __pycache__/, *.pyc — Python bytecode (from the pytximport/pandas   │
+     │     step).                                                              │
+     │                                                                         │
+     │ Files to modify                                                         │
+     │                                                                         │
+     │ - README.md — update the existing "Test data" section's paths from      │
+     │   data/fastq/                                                           │
+     │   to test-data/fastq/, mention the new test-data/reference/ fixture,    │
+     │   and add a                                                             │
+     │   "Running the workflow" section: environment setup                     │
+     │   (conda env create -f environment.yml), run command (snakemake --cores │
+     │   <N>),                                                                 │
+     │   and output locations (results/counts/gene_counts.tsv,                 │
+     │   results/qc/multiqc_report.html).                                      │
+     │                                                                         │
+     │ Verification                                                            │
+     │                                                                         │
+     │ 1. snakemake -n (dry run) — confirm the DAG builds with no missing      │
+     │    inputs/rules,                                                        │
+     │    and shows the expected jobs for the single sample.                   │
+     │ 2. conda env create -f environment.yml && conda activate <env> then     │
+     │    snakemake --cores 2 — run the full pipeline end-to-end.              │
+     │ 3. Confirm results/counts/gene_counts.tsv exists, has a header + gene   │
+     │    rows, and a                                                          │
+     │    non-trivial number of genes have nonzero counts (sanity check        │
+     │    against total input                                                  │
+     │    read count).                                                         │
+     │ 4. Confirm results/qc/multiqc_report.html opens and includes sections   │
+     │    for FastQC,                                                          │
+     │    fastp, and Salmon mapping rate.                                      │
+     │ 5. Re-run snakemake --cores 2 a second time with no changes — confirm   │
+     │    Snakemake                                                            │
+     │    reports everything up to date (nothing re-executed), validating      │
+     │    correct                                                              │
+     │    input/output declarations.                                           │
+     ╰─────────────────────────────────────────────────────────────────────────╯
+
+● Updated plan
+  ⎿  /plan to preview
+  ⎿  User rejected Claude's plan:
+     ╭─────────────────────────────────────────────────────────────────────────╮
+     │ Simple RNA-seq Workflow (Snakemake + Salmon, first version)             │
+     │                                                                         │
+     │ Context                                                                 │
+     │                                                                         │
+     │ The README defines the goal: turn raw RNA-seq FASTQ reads into a        │
+     │ quality-controlled,                                                     │
+     │ gene-level count matrix, with QC summarized alongside the results. DE   │
+     │ analysis is                                                             │
+     │ explicitly out of scope. We already have a small paired-end test sample │
+     │ (data/fastq/SRR6357070_{1,2}.fastq.gz, yeast, 50k read pairs) checked   │
+     │ into the repo.                                                          │
+     │                                                                         │
+     │ Decisions made with the user for this revision:                         │
+     │ - Snakemake for orchestration (dependency-aware, incremental,           │
+     │   multi-sample-ready).                                                  │
+     │ - Salmon (pseudo-alignment + quantification) instead of a genome        │
+     │   aligner +                                                             │
+     │   featureCounts — simpler (no genome index/BAM sorting step), faster,   │
+     │   and standard                                                          │
+     │   for count-matrix-only workflows that don't need read-level alignment  │
+     │   positions.                                                            │
+     │ - pytximport to summarize Salmon's transcript-level quantification to   │
+     │   the                                                                   │
+     │   gene-level count matrix the README requires.                          │
+     │ - Repo structure fix: a plain top-level reference/ folder would wrongly │
+     │   imply                                                                 │
+     │   it holds the canonical reference for the workflow. It doesn't — it's  │
+     │   just the                                                              │
+     │   fixture paired with the test FASTQ. Test fixtures (FASTQ + reference) │
+     │   are grouped                                                           │
+     │   together under one clearly-scoped directory, and the workflow itself  │
+     │   treats                                                                │
+     │   reference/sample paths as config-driven, not hardcoded.               │
+     │                                                                         │
+     │ Repo structure change                                                   │
+     │                                                                         │
+     │ Rename data/ → test-data/ (git mv, preserves history) and add a         │
+     │ reference                                                               │
+     │ subfolder there:                                                        │
+     │                                                                         │
+     │ test-data/                                                              │
+     │   fastq/                                                                │
+     │     SRR6357070_1.fastq.gz                                               │
+     │     SRR6357070_2.fastq.gz                                               │
+     │   reference/                                                            │
+     │     transcriptome.fasta   # transcript-level FASTA (Salmon indexes      │
+     │ transcripts, not the genome)                                            │
+     │     genes.gtf             # used to derive the transcript→gene mapping  │
+     │                                                                         │
+     │ config.yaml (new) is the single place that names which FASTQ/reference  │
+     │ paths the                                                               │
+     │ workflow runs against — for now it points at test-data/, but nothing in │
+     │ the                                                                     │
+     │ Snakefile hardcodes that directory, so pointing it at a real dataset    │
+     │ later is a                                                              │
+     │ config-only change, not a structural one.                               │
+     │                                                                         │
+     │ Reference files                                                         │
+     │                                                                         │
+     │ Both come from the same nf-core/test-datasets (rnaseq branch,           │
+     │ reference/                                                              │
+     │ folder) that the test FASTQ itself is drawn from, so they're guaranteed │
+     │ to match:                                                               │
+     │ transcriptome.fasta (155KB) and genes.gtf (204KB). Tiny enough to check │
+     │ into git,                                                               │
+     │ same rationale as the FASTQ (reproducible without a network             │
+     │ dependency).                                                            │
+     │                                                                         │
+     │ Tool choices                                                            │
+     │                                                                         │
+     │ - FastQC — raw-read QC.                                                 │
+     │ - fastp — adapter/quality trimming; also emits its own QC report        │
+     │   (JSON+HTML).                                                          │
+     │ - Salmon — index the transcriptome once, then quantify each sample's    │
+     │   trimmed                                                               │
+     │   reads directly (mapping-based mode, library type auto-detected with   │
+     │   -l A) →                                                               │
+     │   per-sample quant.sf (transcript-level counts/TPM). No genome          │
+     │   alignment, no BAM.                                                    │
+     │   Simplification: a plain (non-decoy-aware) transcriptome index is used │
+     │   for this                                                              │
+     │   first version — decoy-aware indexing (adding the genome as a decoy)   │
+     │   improves                                                              │
+     │   specificity but needs the genome FASTQ too; noted as a future         │
+     │   enhancement, not                                                      │
+     │   required for a first working version.                                 │
+     │ - pytximport — reads all samples' quant.sf + a transcript→gene mapping, │
+     │   outputs the gene-level count matrix.                                  │
+     │ - MultiQC — aggregates FastQC, fastp, and Salmon logs into one summary  │
+     │   HTML                                                                  │
+     │   report (satisfies the "QC summary" requirement).                      │
+     │                                                                         │
+     │ All tools installed via one root environment.yml (conda/bioconda + pip  │
+     │ for                                                                     │
+     │ pytximport), activated once before running Snakemake — no per-rule      │
+     │ conda envs, to                                                          │
+     │ keep this first version simple.                                         │
+     │                                                                         │
+     │ Files to create                                                         │
+     │                                                                         │
+     │ - environment.yml — snakemake-minimal, fastqc, fastp, salmon, multiqc,  │
+     │   python, pandas, and pytximport (pip).                                 │
+     │ - test-data/reference/transcriptome.fasta,                              │
+     │   test-data/reference/genes.gtf —                                       │
+     │   downloaded as described above.                                        │
+     │ - config.yaml:                                                          │
+     │ reference:                                                              │
+     │   transcriptome_fasta: test-data/reference/transcriptome.fasta          │
+     │   gtf: test-data/reference/genes.gtf                                    │
+     │ samples:                                                                │
+     │   WT_REP1:                                                              │
+     │     r1: test-data/fastq/SRR6357070_1.fastq.gz                           │
+     │     r2: test-data/fastq/SRR6357070_2.fastq.gz                           │
+     │ - Snakefile — rules, all outputs under results/:                        │
+     │   a. fastqc_raw — FastQC on each raw R1/R2 → results/qc/fastqc_raw/     │
+     │   b. fastp — trim {sample}_{1,2}.fastq.gz (paths from config) →         │
+     │      results/trimmed/{sample}_{1,2}.fastq.gz +                          │
+     │      results/qc/fastp/{sample}.{json,html}                              │
+     │   c. salmon_index — build index from                                    │
+     │      config["reference"]["transcriptome_fasta"]                         │
+     │      → results/salmon_index/                                            │
+     │   d. salmon_quant — quantify each sample's trimmed reads →              │
+     │      results/salmon/{sample}/quant.sf + Salmon logs (consumed by        │
+     │      MultiQC)                                                           │
+     │   e. tx2gene — derive a transcript→gene mapping from                    │
+     │      config["reference"]["gtf"] → results/tx2gene.tsv                   │
+     │   f. gene_counts — pytximport combines all samples' quant.sf +          │
+     │      tx2gene.tsv →                                                      │
+     │      results/counts/gene_counts.tsv (the gene-level count matrix; one   │
+     │      column per                                                         │
+     │      sample, one column for now)                                        │
+     │   g. multiqc — scans results/qc/ and results/salmon/ →                  │
+     │      results/qc/multiqc_report.html                                     │
+     │   h. all (default target) — depends on the count matrix + MultiQC       │
+     │      report.                                                            │
+     │ - .gitignore (recreated — removed earlier when it only contained the    │
+     │   now-committed                                                         │
+     │   data/ test fixtures) — covering the artifacts this workflow will      │
+     │   generate:                                                             │
+     │   - results/ — regenerable pipeline outputs, unlike the small fixed     │
+     │     test fixtures,                                                      │
+     │     which stay committed.                                               │
+     │   - .snakemake/ — Snakemake's internal working/metadata/lock directory. │
+     │   - __pycache__/, *.pyc — Python bytecode (from the pytximport/pandas   │
+     │     step).                                                              │
+     │                                                                         │
+     │ Files to modify                                                         │
+     │                                                                         │
+     │ - README.md — update the existing "Test data" section's paths from      │
+     │   data/fastq/                                                           │
+     │   to test-data/fastq/, mention the new test-data/reference/ fixture,    │
+     │   and add a                                                             │
+     │   "Running the workflow" section: environment setup                     │
+     │   (conda env create -f environment.yml), run command (snakemake --cores │
+     │   <N>),                                                                 │
+     │   and output locations (results/counts/gene_counts.tsv,                 │
+     │   results/qc/multiqc_report.html).                                      │
+     │                                                                         │
+     │ Verification (this round)                                               │
+     │                                                                         │
+     │ Scope for this round is building the pipeline and a dry run only — no   │
+     │ environment                                                             │
+     │ creation or actual execution yet; that's deferred to a later, separate  │
+     │ step.                                                                   │
+     │                                                                         │
+     │ 1. snakemake -n (dry run) — confirm the DAG builds with no missing      │
+     │    inputs/rules,                                                        │
+     │    and shows the expected jobs for the single sample.                   │
+     │                                                                         │
+     │ Deferred to later (not part of this round): creating the conda          │
+     │ environment, running                                                    │
+     │ the pipeline for real, sanity-checking results/counts/gene_counts.tsv   │
+     │ and the                                                                 │
+     │ MultiQC report, and re-running to confirm idempotency.                  │
+     ╰─────────────────────────────────────────────────────────────────────────╯
+
+● Updated plan
+  ⎿  /plan to preview
+
+● User approved Claude's plan
+  ⎿  Plan saved to: ~/.claude/plans/quiet-popping-clover.md · /plan to edit
+     Simple RNA-seq Workflow (Snakemake + Salmon, first version)
+
+     Context
+
+     The README defines the goal: turn raw RNA-seq FASTQ reads into a
+     quality-controlled,
+     gene-level count matrix, with QC summarized alongside the results. DE
+     analysis is
+     explicitly out of scope. We already have a small paired-end test sample
+     (data/fastq/SRR6357070_{1,2}.fastq.gz, yeast, 50k read pairs) checked into
+     the repo.
+
+     Decisions made with the user for this revision:
+     - Snakemake for orchestration (dependency-aware, incremental,
+       multi-sample-ready).
+     - Salmon (pseudo-alignment + quantification) instead of a genome aligner +
+       featureCounts — simpler (no genome index/BAM sorting step), faster, and
+       standard
+       for count-matrix-only workflows that don't need read-level alignment
+       positions.
+     - pytximport to summarize Salmon's transcript-level quantification to the
+       gene-level count matrix the README requires.
+     - Repo structure fix: a plain top-level reference/ folder would wrongly
+       imply
+       it holds the canonical reference for the workflow. It doesn't — it's just
+       the
+       fixture paired with the test FASTQ. Test fixtures (FASTQ + reference) are
+       grouped
+       together under one clearly-scoped directory, and the workflow itself
+       treats
+       reference/sample paths as config-driven, not hardcoded.
+
+     Repo structure change
+
+     Rename data/ → test-data/ (git mv, preserves history) and add a reference
+     subfolder there:
+
+     test-data/
+       fastq/
+         SRR6357070_1.fastq.gz
+         SRR6357070_2.fastq.gz
+       reference/
+         transcriptome.fasta   # transcript-level FASTA (Salmon indexes
+     transcripts, not the genome)
+         genes.gtf             # used to derive the transcript→gene mapping
+
+     config.yaml (new) is the single place that names which FASTQ/reference
+     paths the
+     workflow runs against — for now it points at test-data/, but nothing in the
+     Snakefile hardcodes that directory, so pointing it at a real dataset later
+     is a
+     config-only change, not a structural one.
+
+     Reference files
+
+     Both come from the same nf-core/test-datasets (rnaseq branch, reference/
+     folder) that the test FASTQ itself is drawn from, so they're guaranteed to
+     match:
+     transcriptome.fasta (155KB) and genes.gtf (204KB). Tiny enough to check
+     into git,
+     same rationale as the FASTQ (reproducible without a network dependency).
+
+     Tool choices
+
+     - FastQC — raw-read QC.
+     - fastp — adapter/quality trimming; also emits its own QC report
+       (JSON+HTML).
+     - Salmon — index the transcriptome once, then quantify each sample's
+       trimmed
+       reads directly (mapping-based mode, library type auto-detected with -l A)
+       →
+       per-sample quant.sf (transcript-level counts/TPM). No genome alignment,
+       no BAM.
+       Simplification: a plain (non-decoy-aware) transcriptome index is used for
+       this
+       first version — decoy-aware indexing (adding the genome as a decoy)
+       improves
+       specificity but needs the genome FASTQ too; noted as a future
+       enhancement, not
+       required for a first working version.
+     - pytximport — reads all samples' quant.sf + a transcript→gene mapping,
+       outputs the gene-level count matrix.
+     - MultiQC — aggregates FastQC, fastp, and Salmon logs into one summary HTML
+       report (satisfies the "QC summary" requirement).
+
+     All tools installed via one root environment.yml (conda/bioconda + pip for
+     pytximport), activated once before running Snakemake — no per-rule conda
+     envs, to
+     keep this first version simple.
+
+     Files to create
+
+     - environment.yml — snakemake-minimal, fastqc, fastp, salmon, multiqc,
+       python, pandas, and pytximport (pip).
+     - test-data/reference/transcriptome.fasta, test-data/reference/genes.gtf —
+       downloaded as described above.
+     - config.yaml:
+     reference:
+       transcriptome_fasta: test-data/reference/transcriptome.fasta
+       gtf: test-data/reference/genes.gtf
+     samples:
+       WT_REP1:
+         r1: test-data/fastq/SRR6357070_1.fastq.gz
+         r2: test-data/fastq/SRR6357070_2.fastq.gz
+     - Snakefile — rules, all outputs under results/:
+       a. fastqc_raw — FastQC on each raw R1/R2 → results/qc/fastqc_raw/
+       b. fastp — trim {sample}_{1,2}.fastq.gz (paths from config) →
+          results/trimmed/{sample}_{1,2}.fastq.gz +
+          results/qc/fastp/{sample}.{json,html}
+       c. salmon_index — build index from
+          config["reference"]["transcriptome_fasta"]
+          → results/salmon_index/
+       d. salmon_quant — quantify each sample's trimmed reads →
+          results/salmon/{sample}/quant.sf + Salmon logs (consumed by MultiQC)
+       e. tx2gene — derive a transcript→gene mapping from
+          config["reference"]["gtf"] → results/tx2gene.tsv
+       f. gene_counts — pytximport combines all samples' quant.sf + tx2gene.tsv
+          →
+          results/counts/gene_counts.tsv (the gene-level count matrix; one
+          column per
+          sample, one column for now)
+       g. multiqc — scans results/qc/ and results/salmon/ →
+          results/qc/multiqc_report.html
+       h. all (default target) — depends on the count matrix + MultiQC report.
+     - .gitignore (recreated — removed earlier when it only contained the
+       now-committed
+       data/ test fixtures) — covering the artifacts this workflow will
+       generate:
+       - results/ — regenerable pipeline outputs, unlike the small fixed test
+         fixtures,
+         which stay committed.
+       - .snakemake/ — Snakemake's internal working/metadata/lock directory.
+       - __pycache__/, *.pyc — Python bytecode (from the pytximport/pandas
+         step).
+
+     Files to modify
+
+     - README.md — update the existing "Test data" section's paths from
+       data/fastq/
+       to test-data/fastq/, mention the new test-data/reference/ fixture, and
+       add a
+       "Running the workflow" section: environment setup
+       (conda env create -f environment.yml), run command (snakemake --cores 
+       <N>),
+       and output locations (results/counts/gene_counts.tsv,
+       results/qc/multiqc_report.html).
+
+     Verification (this round)
+
+     Scope for this round is building the pipeline, creating the conda
+     environment, and a
+     dry run only — no actual pipeline execution yet; that's deferred to a
+     later, separate
+     step.
+
+     1. conda env create -f environment.yml — confirm the environment resolves
+        and
+        installs cleanly (catches tool/version/channel issues early).
+     2. conda activate <env> then snakemake -n (dry run) — confirm the DAG
+        builds
+        with no missing inputs/rules, and shows the expected jobs for the single
+        sample.
+
+     Deferred to later (not part of this round): actually running the pipeline
+     (snakemake --cores <N>), sanity-checking results/counts/gene_counts.tsv and
+     the
+     MultiQC report, and re-running to confirm idempotency.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Fetch(https://pypi.org/project/pytximport/)
+  ⎿  Received 84.4KB (200 OK)
+
+● Fetch(https://raw.githubusercontent.com/complextissue/pytximport/main/README.m
+       d)
+  ⎿  Received 10.2KB (200 OK)
+
+● Fetch(https://github.com/complextissue/pytximport)
+  ⎿  Received 340.4KB (200 OK)
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+● The conda base install lives on /storage3, which is 100% full (0 bytes
+  available) — that's why the channel search failed. This isn't something I can
+  fix by choosing different packages; it's a host disk-space issue.
+
+  Listed 1 directory, ran 3 shell commands (ctrl+o to expand)
+
+● This is exactly what I need — I found an existing rnaseq conda env on this
+  machine with all the required tools already installed (snakemake, fastqc,
+  fastp, salmon, multiqc, pytximport). Let me check the run command's flags too
+  before writing the Snakefile.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Write(environment.yml)
+  ⎿  Wrote 15 lines to environment.yml
+       1 name: rnaseq-workflow
+       2 channels:
+       3   - bioconda
+       4   - conda-forge
+       5 dependencies:
+       6   - python=3.14
+       7   - snakemake-minimal=9.26
+       8   - fastqc=0.12
+       9   - fastp=1.3
+      10   - salmon=2.7
+     … +5 lines (ctrl+o to expand)
+
+● Write(config.yaml)
+  ⎿  Wrote 8 lines to config.yaml
+      1 reference:
+      2   transcriptome_fasta: test-data/reference/transcriptome.fasta
+      3   gtf: test-data/reference/genes.gtf
+      4 
+      5 samples:
+      6   WT_REP1:
+      7     r1: test-data/fastq/SRR6357070_1.fastq.gz
+      8     r2: test-data/fastq/SRR6357070_2.fastq.gz
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Write(Snakefile)
+  ⎿  Wrote 107 lines to Snakefile
+      1 configfile: "config.yaml"
+      2 
+      3 SAMPLES = list(config["samples"].keys())
+      4 
+      5 
+      6 rule all:
+      7     input:
+      8         "results/counts/gene_counts.csv",
+      9         "results/qc/multiqc_report.html",
+     … +105 lines (ctrl+o to expand)
+
+● Now the .gitignore and README updates.
+● Write(.gitignore)
+  ⎿  Wrote 4 lines to .gitignore
+      1 results/
+      2 .snakemake/
+      3 __pycache__/
+      4 *.pyc
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(README.md)
+  ⎿  Added 39 lines, removed 7 lines
+      17  
+      18  ## Test data
+      19  
+      20 -`data/fastq/SRR6357070_{1,2}.fastq.gz` is a small paired-end *S
+         -. cerevisiae* RNA-seq                                          
+      21 -sample (50,000 read pairs, ~4.3MB total) used to build and exer
+         -cise a first, simple                                           
+      22 -version of the workflow. It's the `WT_REP1` sample from nf-core
+         -'s official                                                    
+      20 +`test-data/fastq/SRR6357070_{1,2}.fastq.gz` is a small paired-e
+         +nd *S. cerevisiae*                                             
+      21 +RNA-seq sample (50,000 read pairs, ~4.3MB total) used to build 
+         +and exercise a first,                                          
+      22 +simple version of the workflow. It's the `WT_REP1` sample from 
+         +nf-core's official                                             
+      23  [rnaseq test dataset](https://github.com/nf-core/test-datasets/
+          tree/rnaseq/testdata/GSE110004)
+      24  (original source: GEO [GSE110004](https://www.ncbi.nlm.nih.gov/
+          geo/query/acc.cgi?acc=GSE110004)).
+      25  
+      26 -The files are checked into the repo (small enough at 4.3MB) so 
+         -the workflow is                                                
+      26 +`test-data/reference/transcriptome.fasta` and `test-data/refere
+         +nce/genes.gtf` are the                                         
+      27 +matching transcriptome/annotation fixture from the same nf-core
+         + test-datasets repo,                                           
+      28 +used by Salmon and the gene-counting step. Note: this is fixtur
+         +e data for testing the                                         
+      29 +workflow, not necessarily the reference you'd use for a real an
+         +alysis — swap the                                              
+      30 +paths in `config.yaml` to point at your own reference instead. 
+      31 +                                                               
+      32 +The files are checked into the repo (small enough, ~350KB) so t
+         +he workflow is                                                 
+      33  reproducible without a network dependency. To re-fetch them if 
+          needed:
+      34  
+      35  ```bash
+      30 -mkdir -p data/fastq                                            
+      31 -curl -sL -o data/fastq/SRR6357070_1.fastq.gz "https://raw.githu
+         -busercontent.com/nf-core/test-datasets/rnaseq/testdata/GSE11000
+         -4/SRR6357070_1.fastq.gz"                                       
+      32 -curl -sL -o data/fastq/SRR6357070_2.fastq.gz "https://raw.githu
+         -busercontent.com/nf-core/test-datasets/rnaseq/testdata/GSE11000
+         -4/SRR6357070_2.fastq.gz"                                       
+      36 +mkdir -p test-data/fastq test-data/reference                   
+      37 +curl -sL -o test-data/fastq/SRR6357070_1.fastq.gz "https://raw.
+         +githubusercontent.com/nf-core/test-datasets/rnaseq/testdata/GSE
+         +110004/SRR6357070_1.fastq.gz"                                  
+      38 +curl -sL -o test-data/fastq/SRR6357070_2.fastq.gz "https://raw.
+         +githubusercontent.com/nf-core/test-datasets/rnaseq/testdata/GSE
+         +110004/SRR6357070_2.fastq.gz"                                  
+      39 +curl -sL -o test-data/reference/transcriptome.fasta "https://ra
+         +w.githubusercontent.com/nf-core/test-datasets/rnaseq/reference/
+         +transcriptome.fasta"                                           
+      40 +curl -sL -o test-data/reference/genes.gtf "https://raw.githubus
+         +ercontent.com/nf-core/test-datasets/rnaseq/reference/genes.gtf"
+      41  ```
+      42 +                                                               
+      43 +## Running the workflow                                        
+      44 +                                                               
+      45 +Set up the environment once:                                   
+      46 +                                                               
+      47 +```bash                                                        
+      48 +conda env create -f environment.yml                            
+      49 +conda activate rnaseq-workflow                                 
+      50 +```                                                            
+      51 +                                                               
+      52 +Then run the pipeline (adjust `--cores` to what's available):  
+      53 +                                                               
+      54 +```bash                                                        
+      55 +snakemake --cores 4                                            
+      56 +```                                                            
+      57 +                                                               
+      58 +Samples and reference paths are defined in `config.yaml`. Outpu
+         +ts:                                                            
+      59 +                                                               
+      60 +- `results/counts/gene_counts.csv` — the gene-level count matri
+         +x.                                                             
+      61 +- `results/qc/multiqc_report.html` — aggregated QC (FastQC, fas
+         +tp, Salmon).                                                   
+      62 +                                                               
+      63 +The pipeline: FastQC (raw QC) → fastp (trimming) → Salmon (pseu
+         +do-alignment +                                                 
+      64 +transcript quantification) → pytximport (gene-level summarizati
+         +on) → MultiQC                                                  
+      65 +(QC summary).                                                  
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The dry run succeeds — Snakemake builds the correct 8-job DAG (fastqc_raw,
+  fastp, salmon_index, tx2gene, salmon_quant, gene_counts, multiqc, all) with
+  all inputs/outputs resolving correctly and no missing files.
+
+  Two things worth flagging before we go further:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● 1. Disk space: /storage3 (where your conda installation lives —
+     /storage3/dstanojevic/miniforge3) is 100% full (0 bytes free). conda env 
+     create -f environment.yml will fail there. I didn't touch anything to fix
+     this — /storage3/dstanojevic/herro and /storage3/dstanojevic/flourant are
+     1.1TB each and dominate the disk; that's your data to triage, not mine to
+     clean up.
+  2. Lucky workaround: there's already an existing conda env named rnaseq on
+     this machine with the exact tool versions I would have installed (snakemake
+     9.26, fastqc 0.12, fastp 1.3, salmon 2.7, multiqc 1.35, pytximport
+     0.13.0). I used it to run the dry run above instead of creating a new one,
+     since disk space wouldn't allow it anyway.
+
+  Everything created so far:
+  - test-data/ (renamed from data/) with fastq/ and new reference/ subfolder
+    (transcriptome.fasta, genes.gtf)
+  - environment.yml, config.yaml, Snakefile, .gitignore
+  - Updated README.md
+
+  Per the plan, I stopped at the dry run — no actual pipeline execution. Given
+  the disk situation, do you want to point environment.yml's env name at the
+  existing rnaseq env (rename mine to match, or vice versa) so things stay
+  consistent once you're ready to actually run it, or would you rather free up
+  space on /storage3 first?
+
+✻ Brewed for 8m 36s · done 2:56 AM
+
+❯ Act as a reviewer. Run the workflow on the test data, analyze implementation, 
+  perform sanity checks on the outputs. Think about corner cases and list all   
+  the potential issues and fixes. Do not implement fixes without my approval.   
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The pipeline ran end-to-end successfully in ~18 seconds. Now let me inspect
+  the outputs and logs for sanity checks.
+
+  Ran 5 shell commands (ctrl+o to expand)
+
+● Idempotency confirmed. Now let me review the Snakefile/config implementation
+  itself for correctness and edge cases beyond what a single successful run
+  reveals.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Review: Workflow run + implementation analysis
+
+  Execution result
+
+  Ran snakemake --cores 4 end-to-end on test-data/: all 8 jobs completed in
+  ~18s, and a second run correctly reported "Nothing to be done" (idempotent,
+  correct input/output dependency declarations).
+
+  Sanity checks performed (all passed)
+
+  Check: fastp: reads in/out accounting
+  Result: 50,000 pairs in → 47,606 pairs pass filter (4,788 dropped to low
+  quality/N/adapters) — consistent
+  ────────────────────────────────────────
+  Check: Salmon mapping rate
+  Result: 83.6% (39,799/47,606 fragments) — reasonable for this reference
+  ────────────────────────────────────────
+  Check: Salmon auto-detected library type
+  Result: ISR (stranded-reverse) — matches nf-core's own samplesheet, which
+  lists
+  reverse for the sibling samples. Validates that -l A auto-detection (chosen
+  over a hardcoded stranded/unstranded guess) works correctly here
+  ────────────────────────────────────────
+  Check: tx2gene.tsv row count vs transcriptome
+  Result: 124 transcripts ↔ 124 gene mappings (1:1, as expected for this yeast
+  annotation)
+  ────────────────────────────────────────
+  Check: Σ(gene_counts.csv) vs Σ(quant.sf NumReads) vs Salmon's own num_mapped
+  Result: All three = 39,799, exact match — counts are internally consistent
+  end-to-end
+  ────────────────────────────────────────
+  Check: MultiQC
+  Result: Correctly discovered and aggregated FastQC (2 reports), fastp (1), and
+
+  Salmon (meta info + lib format + fragment length dist) into one report
+  ────────────────────────────────────────
+  Check: Salmon index
+  Result: All 125 references indexed (none dropped for being shorter than k=31)
+
+  The pipeline is mechanically sound and numerically consistent. No correctness
+  bugs in the core data flow.
+
+  Issues found (not fixed — for your review)
+
+  1. .gitignore is missing logs/. The Snakefile writes every rule's log to
+     logs/... at the repo root, which isn't covered by .gitignore (only
+     results/, .snakemake/, __pycache__/ are). Confirmed with git status: logs/
+     currently shows as untracked and would get committed.
+     - Fix: add logs/ to .gitignore.
+  2. gene_counts.csv column header is the raw file path, not the sample name.
+     Header row is "","results/salmon/WT_REP1/quant.sf" instead of "","WT_REP1".
+     Confirmed via pytximport run --help — the CLI has no flag to relabel
+     columns; it always uses the input path. This gets worse (long, unreadable
+     headers) as more samples are added.
+     - Fix: add a small post-processing step (in the gene_counts rule or a tiny
+       script) that renames columns from file paths back to sample IDs using the
+       same SAMPLES list order that built params.inputs.
+  3. Single-end samples aren't supported. config.yaml's schema and the
+     fastqc_raw/fastp rules hardcode r1+r2. nf-core's own samplesheet for this
+     exact test data includes single-end samples (e.g. RAP1_UNINDUCED_REP1,
+     fastq_2 empty) — real "typical RNA-seq input" will include single-end
+     libraries.
+     - Fix: make r2 optional in config and branch the fastp/salmon_quant shell
+       commands (single-end uses -U/-r instead of -I/-2).
+  4. environment.yml has never actually been built/tested. /storage3 (where
+     conda lives) is still 100% full, so I validated everything against a
+     pre-existing, differently-named rnaseq env, not the rnaseq-workflow env our
+     own environment.yml defines. There's a real chance the from-scratch
+     install resolves differently or fails.
+     - Fix: free space or point conda's pkg/env dirs elsewhere, then actually
+       run conda env create -f environment.yml and re-verify; align the env name
+       (rnaseq-workflow vs rnaseq) so the README instructions are accurate
+       either way.
+  5. tx2gene generation assumes standard GTF attribute names (transcript_id,
+     gene_id). pytximport create-map takes --source-field/--target-field
+     overrides, but the Snakefile doesn't expose them. Works fine for this
+     Ensembl-style GTF; would silently produce a wrong/empty mapping against a
+     GFF3 (ID/Parent-style) or nonstandard GTF later.
+     - Fix: either document the GTF-format assumption clearly, or expose the
+       field names via config.yaml for when the reference is swapped.
+  6. No validation that FASTQ/transcriptome/GTF are mutually consistent.
+     Currently they happen to match because all three came from the same source
+     commit. Swapping just the FASTQ (or just the reference) in config.yaml
+     would run "successfully" but silently produce garbage (near-0% mapping)
+     with nothing in the pipeline surfacing that as an error.
+     - Fix (future, optional): a lightweight sanity-check rule/assertion on
+       Salmon's mapping rate (e.g., warn/fail below some threshold) — probably
+       out of scope for "first simple version," flagging for awareness rather
+       than proposing now.
+  7. Minor/informational, not necessarily worth fixing:
+     - Gene counts are floats (e.g. 31.0), not integers — standard for
+       Salmon/tximport (EM-assigned fractional multi-mapper counts); most
+       downstream tools (DESeq2 etc.) handle this natively.
+     - Sample keys in config.yaml are used directly as path components
+       (results/salmon/{sample}/...) with no sanitization — a sample name with /
+       or spaces would break path construction. Unlikely in practice but no
+       guard exists.
+     - fastqc_raw's directory() output means Snakemake tracks freshness via a
+       hidden timestamp file for the whole folder rather than per-file —
+       standard Snakemake pattern for tools with unpredictable output names,
+       just coarser-grained than per-file tracking.
+
+  Let me know which of these you'd like fixed — happy to batch them or go one at
+  a time.
+
+✻ Churned for 2m 39s · done 4:47 AM
+
+❯ 1. Apply suggested fix.                                                       
+  2. I think the existing naming is OK.                                         
+  3. Leave it for now, we will deal with it later if needed.                    
+  4. The existing one should be ok                                              
+  5. Document the assumption for now                                            
+  6. Leave it for now                                                           
+                                                                                
+  Proceed with the suggested fixes                                              
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(.gitignore)
+  ⎿  Added 1 line
+      1  results/
+      2 +logs/                                                           
+      3  .snakemake/
+      4  __pycache__/
+      5  *.pyc
+
+● Now documenting the GTF attribute-naming assumption for the tx2gene step.
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(Snakefile)
+  ⎿  Added 3 lines
+      68  
+      69  
+      70  rule tx2gene:
+      71 +    # Assumes a standard GTF with `transcript_id`/`gene_id` att
+         +ributes (e.g. Ensembl-style).                                  
+      72 +    # A GFF3 (`ID`/`Parent`-style) or nonstandard GTF would nee
+         +d                                                              
+      73 +    # `--source-field`/`--target-field` passed to `pytximport c
+         +reate-map`.                                                    
+      74      input:
+      75          gtf=config["reference"]["gtf"],
+      76      output:
+
+● Now a short README note so the assumption is visible without reading the
+  Snakefile.
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(README.md)
+  ⎿  Added 5 lines
+      29  workflow, not necessarily the reference you'd use for a real an
+          alysis — swap the
+      30  paths in `config.yaml` to point at your own reference instead.
+      31  
+      32 +The gene-counting step (transcript→gene mapping) assumes a stan
+         +dard GTF with                                                  
+      33 +`transcript_id`/`gene_id` attributes (e.g. Ensembl-style), whic
+         +h this fixture GTF                                             
+      34 +has. A GFF3 or nonstandard GTF may need extra options — see the
+         + comment on the                                                
+      35 +`tx2gene` rule in the `Snakefile`.                             
+      36 +                                                               
+      37  The files are checked into the repo (small enough, ~350KB) so t
+          he workflow is
+      38  reproducible without a network dependency. To re-fetch them if 
+          needed:
+      39  
+
+● Let me re-run the pipeline to confirm the Snakefile edit (comment-only) didn't
+  break anything, and verify git status is clean of logs/ now.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Both fixes applied and verified:
+
+  1. .gitignore — added logs/; confirmed git status no longer shows it as
+     untracked.
+  2. Documented the tx2gene GTF assumption — a comment on the tx2gene rule in
+     the Snakefile, plus a note in the README's Test data section.
+
+  Dry run still resolves correctly (nothing re-executed, since these were
+  comment/doc-only changes). The other four items (#2, #3, #4, #6) are left
+  as-is per your calls. Let me know when you want to commit, or if you'd like to
+  tackle any of the deferred items next.
+
+✻ Cooked for 56s · done 5:07 AM
+
+❯ The real dataset of interest is placed here:                                  
+  https://zenodo.org/records/6457007                                            
+                                                                                
+  Download only samples that are subsampled and run the pipeline on them. Show  
+  download progress. Run the workflow on this data. Validate the outputs.       
+
+● Fetch(https://zenodo.org/records/6457007)
+  ⎿  Received 0 bytes (504 Gateway Timeout)
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● Got it on the second attempt. Let me parse the file listing.
+
+  Ran 3 shell commands (ctrl+o to expand)
+● Good — 690GB free, and wget/pigz are available. Let's add data/ to .gitignore
+  first (this real dataset is far too large to check in, unlike the tiny test
+  fixtures), then download.
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(.gitignore)
+  ⎿  Added 1 line
+      1  results/
+      2  logs/
+      3 +data/                                                           
+      4  .snakemake/
+      5  __pycache__/
+      6  *.pyc
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Fast connection (~50MB/s). Let's download the rest.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● Now the largest file (single-end sample, 497MB), and the GTF.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● All downloaded. Now verify checksums against Zenodo's provided MD5s before
+  doing anything else.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Good — R1/R2 pairs match in read count. Let's compress and rename to match our
+  config convention.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Now fetching a matching Drosophila transcriptome FASTA (BDGP6.32, Ensembl
+  release 109) — the Zenodo record only provides the GTF, not a transcript-level
+  reference, which Salmon needs.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● Write(config.pasilla.yaml)
+  ⎿  Wrote 18 lines to config.pasilla.yaml
+       1 # Real dataset: Brooks et al. 2011 pasilla-knockdown RNA-seq (Dr
+       2 # subsampled FASTQ files from the Galaxy Training Network tutori
+         al data on Zenodo:
+       3 # https://zenodo.org/records/6457007
+       5 # GSM461176 (untreated, single-end) is a subsampled sample in th
+         at record too, but is
+         amples (r1+r2).
+       7 
+       8 reference:
+      10   gtf: data/reference/genes.gtf
+     … +12 lines (ctrl+o to expand)
+
+● Now let's run the pipeline against this real dataset config.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Confirmed a real gotcha: Snakemake deep-merges --configfile on top of the
+  Snakefile's default configfile: "config.yaml" rather than replacing it — so
+  the dry run above picked up the old WT_REP1 yeast sample in addition to the
+  two real Drosophila samples (its salmon_quant would run against the fly
+  transcriptome, producing garbage). I'll avoid the Snakefile change for now and
+  just do a safe, reversible swap of config.yaml for this run.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Clean now — only 2 samples, no WT_REP1 contamination. Running for real.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Ran successfully in ~33s. Now let's restore config.yaml immediately (so the
+  test fixture default isn't left clobbered) and then validate outputs.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Restored correctly. Now let's validate the outputs.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● A small discrepancy in the sums (~0.01%) is worth chasing down — let's check
+  if it's from transcripts missing a gene mapping.
+
+  Ran 5 shell commands (ctrl+o to expand)
+
+❯ but there are three samples – 2 paired-ends and 1 single-end                  
+
+  Read 1 file (ctrl+o to expand)
+
+● Good catch — I downloaded all three subsampled samples but only wired up the
+  two paired-end ones. Let me add single-end support to the pipeline now and
+  include GSM461176.
+
+● Update(Snakefile)
+  ⎿  Added 38 lines, removed 4 lines
+       1  configfile: "config.yaml"
+       2  
+       3  SAMPLES = list(config["samples"].keys())
+       4 +PE_SAMPLES = [s for s in SAMPLES if config["samples"][s].get("r
+         +2")]                                                           
+       5 +SE_SAMPLES = [s for s in SAMPLES if s not in PE_SAMPLES]       
+       6  
+       7 +# Regex alternation used to route each sample to its paired-end
+         +/single-end rule                                               
+       8 +# variant. "(?!)" never matches, so an empty list doesn't turn 
+         +into a                                                         
+       9 +# constraint that matches everything.                          
+      10 +PE_PATTERN = "|".join(PE_SAMPLES) if PE_SAMPLES else "(?!)"    
+      11 +SE_PATTERN = "|".join(SE_SAMPLES) if SE_SAMPLES else "(?!)"    
+      12  
+      13 +                                                               
+      14  rule all:
+      15      input:
+      16          "results/counts/gene_counts.csv",
+      17          "results/qc/multiqc_report.html",
+      18  
+      19  
+      20 +def fastqc_raw_input(wc):                                      
+      21 +    sample = config["samples"][wc.sample]                      
+      22 +    files = [sample["r1"]]                                     
+      23 +    if sample.get("r2"):                                       
+      24 +        files.append(sample["r2"])                             
+      25 +    return files                                               
+      26 +                                                               
+      27 +                                                               
+      28  rule fastqc_raw:
+      29      input:
+      14 -        r1=lambda wc: config["samples"][wc.sample]["r1"],      
+      15 -        r2=lambda wc: config["samples"][wc.sample]["r2"],      
+      30 +        fastqc_raw_input,                                      
+      31      output:
+      32          directory("results/qc/fastqc_raw/{sample}"),
+      33      log:
+      34          "logs/fastqc_raw/{sample}.log",
+      35      shell:
+      21 -        "mkdir -p {output} && fastqc --outdir {output} {input.r
+         -1} {input.r2} > {log} 2>&1"                                    
+      36 +        "mkdir -p {output} && fastqc --outdir {output} {input} 
+         +> {log} 2>&1"                                                  
+      37  
+      38  
+      24 -rule fastp:                                                    
+      39 +rule fastp_pe:                                                 
+      40      input:
+      41          r1=lambda wc: config["samples"][wc.sample]["r1"],
+      42          r2=lambda wc: config["samples"][wc.sample]["r2"],
+     ...
+      48      log:
+      49          "logs/fastp/{sample}.log",
+      50      threads: 4
+      51 +    wildcard_constraints:                                      
+      52 +        sample=PE_PATTERN,                                     
+      53      shell:
+      54          "fastp -i {input.r1} -I {input.r2} -o {output.r1} -O {o
+          utput.r2} "
+      55          "-j {output.json} -h {output.html} -w {threads} > {log}
+           2>&1"
+      56  
+      57  
+      58 +rule fastp_se:                                                 
+      59 +    input:                                                     
+      60 +        r1=lambda wc: config["samples"][wc.sample]["r1"],      
+      61 +    output:                                                    
+      62 +        r1="results/trimmed/{sample}.fastq.gz",                
+      63 +        json="results/qc/fastp/{sample}.json",                 
+      64 +        html="results/qc/fastp/{sample}.html",                 
+      65 +    log:                                                       
+      66 +        "logs/fastp/{sample}.log",                             
+      67 +    threads: 4                                                 
+      68 +    wildcard_constraints:                                      
+      69 +        sample=SE_PATTERN,                                     
+      70 +    shell:                                                     
+      71 +        "fastp -i {input.r1} -o {output.r1} "                  
+      72 +        "-j {output.json} -h {output.html} -w {threads} > {log}
+         + 2>&1"                                                         
+      73 +                                                               
+      74 +                                                               
+      75  rule salmon_index:
+      76      input:
+      77          fasta=config["reference"]["transcriptome_fasta"],
+
+● Update(Snakefile)
+  ⎿  Added 21 lines, removed 1 line
+      84          "salmon index -t {input.fasta} -i {output} -p {threads}
+           > {log} 2>&1"
+      85  
+      86  
+      87 -rule salmon_quant:                                             
+      87 +rule salmon_quant_pe:                                          
+      88      input:
+      89          r1="results/trimmed/{sample}_1.fastq.gz",
+      90          r2="results/trimmed/{sample}_2.fastq.gz",
+     ...
+       96      log:
+       97          "logs/salmon_quant/{sample}.log",
+       98      threads: 4
+       99 +    wildcard_constraints:                                     
+      100 +        sample=PE_PATTERN,                                    
+      101      shell:
+      102          "salmon quant -i {input.index} -l A -1 {input.r1} -2 {
+           input.r2} "
+      103          "-p {threads} -o {params.outdir} > {log} 2>&1"
+      104  
+      105  
+      106 +rule salmon_quant_se:                                         
+      107 +    input:                                                    
+      108 +        r1="results/trimmed/{sample}.fastq.gz",               
+      109 +        index="results/salmon_index",                         
+      110 +    output:                                                   
+      111 +        "results/salmon/{sample}/quant.sf",                   
+      112 +    params:                                                   
+      113 +        outdir=lambda wc: f"results/salmon/{wc.sample}",      
+      114 +    log:                                                      
+      115 +        "logs/salmon_quant/{sample}.log",                     
+      116 +    threads: 4                                                
+      117 +    wildcard_constraints:                                     
+      118 +        sample=SE_PATTERN,                                    
+      119 +    shell:                                                    
+      120 +        "salmon quant -i {input.index} -l A -r {input.r1} "   
+      121 +        "-p {threads} -o {params.outdir} > {log} 2>&1"        
+      122 +                                                              
+      123 +                                                              
+      124  rule tx2gene:
+      125      # Assumes a standard GTF with `transcript_id`/`gene_id` at
+           tributes (e.g. Ensembl-style).
+      126      # A GFF3 (`ID`/`Parent`-style) or nonstandard GTF would ne
+           ed
+
+● Now update config.pasilla.yaml to add the single-end sample.
+
+  Read 1 file (ctrl+o to expand)
+
+● Write(config.pasilla.yaml)
+  ⎿  Added 2 lines, removed 3 lines
+      1  # Real dataset: Brooks et al. 2011 pasilla-knockdown RNA-seq (Dr
+         osophila melanogaster),
+      2  # subsampled FASTQ files from the Galaxy Training Network tutori
+         al data on Zenodo:
+      3  # https://zenodo.org/records/6457007
+      4 -#                                                               
+      5 -# GSM461176 (untreated, single-end) is a subsampled sample in th
+        -at record too, but is                                           
+      6 -# omitted here: the current Snakefile only supports paired-end s
+        -amples (r1+r2).                                                 
+      4  
+      5  reference:
+      6    transcriptome_fasta: data/reference/transcriptome.fasta
+     ...
+      13    GSM461180_treated:
+      14      r1: data/fastq/GSM461180_1.fastq.gz
+      15      r2: data/fastq/GSM461180_2.fastq.gz
+      16 +  GSM461176_untreated:                                         
+      17 +    r1: data/fastq/GSM461176.fastq.gz                          
+● First let me confirm the change doesn't break the existing yeast test config,
+  then clean the previously-identified stale results/ contamination before
+  re-running the real dataset with all three samples.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Correctly routes: fastp_pe×2, fastp_se×1, salmon_quant_pe×2,
+  salmon_quant_se×1. Running for real now.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● All 14 jobs completed cleanly, including the single-end GSM461176_untreated.
+  Now restore config.yaml and validate.
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+● Everything checks out. Here's the full summary of what happened and what I
+  found.
+
+  What was done
+
+  1. Downloaded the 5 subsampled files from the Zenodo record (GSM461176
+     single-end, GSM461177_1/2 and GSM461180_1/2 paired-end) plus the
+     accompanying Drosophila GTF, with visible per-file progress via wget 
+     --progress=dot:giga. Verified all 6 against the MD5 checksums Zenodo 
+     publishes — all matched.
+  2. Since the record has no transcriptome FASTA, downloaded the matching
+     Ensembl release‑109 BDGP6.32 cDNA FASTA (confirmed transcript IDs match the
+     GTF's transcript_id/gene_id — both use FlyBase FBtr/FBgn IDs).
+  3. Compressed the raw .fastqsanger files to .fastq.gz (1.1GB → 292MB) and laid
+     them out as data/fastq/ + data/reference/ — added data/ to .gitignore
+     (unlike the tiny test fixtures, this is far too large to commit).
+  4. You caught that I'd only wired up the 2 paired-end samples and left the 
+     single-end one (GSM461176) unrun — extended the Snakefile with fastqc_raw
+     accepting a variable file list, and split fastp/salmon_quant into _pe/_se
+     rule variants (routed by wildcard_constraints over sample-name lists
+     derived from config). Regression-checked against the original yeast config
+     first — still resolves correctly.
+  5. Created config.pasilla.yaml with all 3 samples, ran the full pipeline (14
+     jobs, ~36s).
+
+  Validation results
+
+  - Checksums: all 6 downloads verified against Zenodo's MD5s.
+  - Consistency: gene-count sums match Salmon's own num_mapped almost exactly
+    for all 3 samples (residual ~130 reads/sample traced to 6 transcripts of
+    mod(mdg4) — a gene famous in Drosophila genomics for trans-splicing —
+    present in the Ensembl FASTA but absent from the Zenodo GTF's transcript
+    set; negligible, <0.02% of reads).
+  - Mapping rates: 83.1% / 77.9% (paired) and 65.0% (single-end) — all
+    plausible, and the SE rate being lower than PE is expected (less information
+    to resolve multimapping).
+  - Biological sanity check: the pasilla gene itself (FBgn0261552) reads 569.6 /
+    1752.0 in the two untreated samples vs. 127.2 in the treated (knockdown)
+    sample — a clear, correctly-directioned knockdown signal. This is strong
+    evidence the whole pipeline is biologically correct, not just internally
+    consistent.
+  - MultiQC report: correctly scoped to only the 3 real samples (no stale rows).
+
+  Issues found along the way (not fixed, flagging for you)
+
+  1. Snakemake config-merge gotcha: --configfile config.pasilla.yaml merges with
+     (doesn't replace) the Snakefile's default configfile: "config.yaml" —
+     nested dicts like samples get unioned, so it silently tried to also process
+     the yeast WT_REP1 sample against the Drosophila reference. I worked around
+     it by temporarily swapping config.yaml's contents in and back out
+     (verified restored correctly), rather than using --configfile.
+  2. results/ isn't scoped per dataset — switching configs leaves the previous
+     run's outputs sitting alongside the new ones, and since multiqc scans the
+     whole results/qc+results/salmon tree, it silently mixed the old yeast QC
+     stats into the new report the first time (I cleaned results/ before the
+     final run to avoid this, but the underlying gap remains).
+
+  Both point at the same root cause: outputs aren't namespaced by 
+  dataset/config. Options would be a config-driven results_dir prefix, or
+  documenting "always rm -rf results/ when switching datasets." Want me to fix
+  this now, or leave it for later like the earlier deferred items?
+
+✻ Cooked for 13m 49s · done 5:30 AM
+
+❯ Fix it now with a config-driven results_dir prefix. Should we rename          
+  config.yaml to config.test.yaml or sth similar?                               
+
+  Read 1 file (ctrl+o to expand)
+
+● Yes — rename config.yaml → config.test.yaml. And to fully close the gap, I
+  also need to remove the Snakefile's implicit configfile: "config.yaml"
+  default: results_dir alone doesn't stop Snakemake's config-merge behavior
+  (nested samples dicts still get unioned across configs) — only requiring an
+  explicit --configfile on every invocation does. I'll make both changes
+  together.
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Update(config.test.yaml)
+  ⎿  Added 2 lines
+      1 +results_dir: results/test                                       
+      2 +                                                                
+      3  reference:
+      4    transcriptome_fasta: test-data/reference/transcriptome.fasta
+      5    gtf: test-data/reference/genes.gtf
+
+● Update(config.pasilla.yaml)
+  ⎿  Added 2 lines
+      2  # subsampled FASTQ files from the Galaxy Training Network tutori
+         al data on Zenodo:
+      3  # https://zenodo.org/records/6457007
+      4  
+      5 +results_dir: results/pasilla                                    
+      6 +                                                                
+      7  reference:
+      8    transcriptome_fasta: data/reference/transcriptome.fasta
+      9    gtf: data/reference/genes.gtf
+
+● Now the Snakefile — remove the implicit default configfile, and prefix all
+  results/ paths with config["results_dir"].
+
+  Read 1 file (ctrl+o to expand)
+
+● Now rewriting the whole file with RESULTS prefix and no default configfile.
+
+● Write(Snakefile)
+  ⎿  Added 39 lines, removed 30 lines
+       1 -configfile: "config.yaml"                                      
+       1 +# No default configfile: always pass one explicitly, e.g.      
+       2 +#   snakemake --configfile config.test.yaml --cores 4          
+       3 +#   snakemake --configfile config.pasilla.yaml --cores 4       
+       4 +# A default here would get merged (not replaced) with whatever 
+         +--configfile is                                                
+       5 +# passed, silently unioning both configs' "samples" dicts.     
+       6  
+       7 +RESULTS = config["results_dir"]                                
+       8 +                                                               
+       9  SAMPLES = list(config["samples"].keys())
+      10  PE_SAMPLES = [s for s in SAMPLES if config["samples"][s].get("r
+          2")]
+      11  SE_SAMPLES = [s for s in SAMPLES if s not in PE_SAMPLES]
+     ...
+      19  
+      20  rule all:
+      21      input:
+      16 -        "results/counts/gene_counts.csv",                      
+      17 -        "results/qc/multiqc_report.html",                      
+      22 +        f"{RESULTS}/counts/gene_counts.csv",                   
+      23 +        f"{RESULTS}/qc/multiqc_report.html",                   
+      24  
+      25  
+      26  def fastqc_raw_input(wc):
+     ...
+      35      input:
+      36          fastqc_raw_input,
+      37      output:
+      32 -        directory("results/qc/fastqc_raw/{sample}"),           
+      38 +        directory(f"{RESULTS}/qc/fastqc_raw/{{sample}}"),      
+      39      log:
+      40          "logs/fastqc_raw/{sample}.log",
+      41      shell:
+     ...
+      47          r1=lambda wc: config["samples"][wc.sample]["r1"],
+      48          r2=lambda wc: config["samples"][wc.sample]["r2"],
+      49      output:
+      44 -        r1="results/trimmed/{sample}_1.fastq.gz",              
+      45 -        r2="results/trimmed/{sample}_2.fastq.gz",              
+      46 -        json="results/qc/fastp/{sample}.json",                 
+      47 -        html="results/qc/fastp/{sample}.html",                 
+      50 +        r1=f"{RESULTS}/trimmed/{{sample}}_1.fastq.gz",         
+      51 +        r2=f"{RESULTS}/trimmed/{{sample}}_2.fastq.gz",         
+      52 +        json=f"{RESULTS}/qc/fastp/{{sample}}.json",            
+      53 +        html=f"{RESULTS}/qc/fastp/{{sample}}.html",            
+      54      log:
+      55          "logs/fastp/{sample}.log",
+      56      threads: 4
+     ...
+      65      input:
+      66          r1=lambda wc: config["samples"][wc.sample]["r1"],
+      67      output:
+      62 -        r1="results/trimmed/{sample}.fastq.gz",                
+      63 -        json="results/qc/fastp/{sample}.json",                 
+      64 -        html="results/qc/fastp/{sample}.html",                 
+      68 +        r1=f"{RESULTS}/trimmed/{{sample}}.fastq.gz",           
+      69 +        json=f"{RESULTS}/qc/fastp/{{sample}}.json",            
+      70 +        html=f"{RESULTS}/qc/fastp/{{sample}}.html",            
+      71      log:
+      72          "logs/fastp/{sample}.log",
+      73      threads: 4
+     ...
+      82      input:
+      83          fasta=config["reference"]["transcriptome_fasta"],
+      84      output:
+      79 -        directory("results/salmon_index"),                     
+      85 +        directory(f"{RESULTS}/salmon_index"),                  
+      86      log:
+      87          "logs/salmon_index.log",
+      88      threads: 4
+     ...
+       92  
+       93  rule salmon_quant_pe:
+       94      input:
+       89 -        r1="results/trimmed/{sample}_1.fastq.gz",             
+       90 -        r2="results/trimmed/{sample}_2.fastq.gz",             
+       91 -        index="results/salmon_index",                         
+       95 +        r1=f"{RESULTS}/trimmed/{{sample}}_1.fastq.gz",        
+       96 +        r2=f"{RESULTS}/trimmed/{{sample}}_2.fastq.gz",        
+       97 +        index=f"{RESULTS}/salmon_index",                      
+       98      output:
+       93 -        "results/salmon/{sample}/quant.sf",                   
+       99 +        f"{RESULTS}/salmon/{{sample}}/quant.sf",              
+      100      params:
+       95 -        outdir=lambda wc: f"results/salmon/{wc.sample}",      
+      101 +        outdir=lambda wc: f"{RESULTS}/salmon/{wc.sample}",    
+      102      log:
+      103          "logs/salmon_quant/{sample}.log",
+      104      threads: 4
+     ...
+      111  
+      112  rule salmon_quant_se:
+      113      input:
+      108 -        r1="results/trimmed/{sample}.fastq.gz",               
+      109 -        index="results/salmon_index",                         
+      114 +        r1=f"{RESULTS}/trimmed/{{sample}}.fastq.gz",          
+      115 +        index=f"{RESULTS}/salmon_index",                      
+      116      output:
+      111 -        "results/salmon/{sample}/quant.sf",                   
+      117 +        f"{RESULTS}/salmon/{{sample}}/quant.sf",              
+      118      params:
+      113 -        outdir=lambda wc: f"results/salmon/{wc.sample}",      
+      119 +        outdir=lambda wc: f"{RESULTS}/salmon/{wc.sample}",    
+      120      log:
+      121          "logs/salmon_quant/{sample}.log",
+      122      threads: 4
+     ...
+      134      input:
+      135          gtf=config["reference"]["gtf"],
+      136      output:
+      131 -        "results/tx2gene.tsv",                                
+      137 +        f"{RESULTS}/tx2gene.tsv",                             
+      138      log:
+      139          "logs/tx2gene.log",
+      140      shell:
+     ...
+      143  
+      144  rule gene_counts:
+      145      input:
+      140 -        quant=expand("results/salmon/{sample}/quant.sf", sampl
+          -e=SAMPLES),                                                   
+      141 -        map="results/tx2gene.tsv",                            
+      146 +        quant=expand(f"{RESULTS}/salmon/{{sample}}/quant.sf", 
+          +sample=SAMPLES),                                              
+      147 +        map=f"{RESULTS}/tx2gene.tsv",                         
+      148      output:
+      143 -        "results/counts/gene_counts.csv",                     
+      149 +        f"{RESULTS}/counts/gene_counts.csv",                  
+      150      params:
+      151          inputs=lambda wc, input: " ".join(f"-i {q}" for q in i
+           nput.quant),
+      152      log:
+     ...
+      158  
+      159  rule multiqc:
+      160      input:
+      155 -        expand("results/qc/fastqc_raw/{sample}", sample=SAMPLE
+          -S),                                                           
+      156 -        expand("results/qc/fastp/{sample}.json", sample=SAMPLE
+          -S),                                                           
+      157 -        expand("results/salmon/{sample}/quant.sf", sample=SAMP
+          -LES),                                                         
+      161 +        expand(f"{RESULTS}/qc/fastqc_raw/{{sample}}", sample=S
+          +AMPLES),                                                      
+      162 +        expand(f"{RESULTS}/qc/fastp/{{sample}}.json", sample=S
+          +AMPLES),                                                      
+      163 +        expand(f"{RESULTS}/salmon/{{sample}}/quant.sf", sample
+          +=SAMPLES),                                                    
+      164      output:
+      159 -        "results/qc/multiqc_report.html",                     
+      165 +        f"{RESULTS}/qc/multiqc_report.html",                  
+      166 +    params:                                                   
+      167 +        results_dir=RESULTS,                                  
+      168      log:
+      169          "logs/multiqc.log",
+      170      shell:
+      163 -        "multiqc results/qc results/salmon --outdir results/qc
+          - "                                                            
+      171 +        "multiqc {params.results_dir}/qc {params.results_dir}/
+          +salmon "                                                      
+      172 +        "--outdir {params.results_dir}/qc "                   
+      173          "--filename multiqc_report.html --force > {log} 2>&1"
+
+● Now let's clean the old flat results/ (it's stale under the new scheme) and
+  verify both configs resolve correctly.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Exactly as intended: no config → clear KeyError failure; each config resolves
+  to only its own samples, no cross-contamination possible. Now let's actually
+  run both to completion and re-validate.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Both ran cleanly into separate results/test/ and results/pasilla/ trees. Let's
+  validate outputs match previous known-good numbers, and confirm no
+  cross-contamination.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Both idempotent, isolated, and numerically identical to the earlier validated
+  results. Let's update the README to match the new required workflow, then
+  commit-check status.
+
+● Update(README.md)
+  ⎿  Added 4 lines
+      34  has. A GFF3 or nonstandard GTF may need extra options — see the
+           comment on the
+      35  `tx2gene` rule in the `Snakefile`.
+      36  
+      37 +This fixture is used by `config.test.yaml`. `config.pasilla.yam
+         +l` runs the same                                               
+      38 +workflow against a real dataset instead (subsampled *Drosophila
+         +* pasilla-knockdown                                            
+      39 +RNA-seq) — see "Running the workflow" below.                   
+      40 +                                                               
+      41  The files are checked into the repo (small enough, ~350KB) so t
+          he workflow is
+      42  reproducible without a network dependency. To re-fetch them if 
+          needed:
+      43  
+
+● Update(README.md)
+  ⎿  Added 14 lines, removed 5 lines
+      58  conda activate rnaseq-workflow
+      59  ```
+      60  
+      61 -Then run the pipeline (adjust `--cores` to what's available):  
+      61 +Then run the pipeline, always passing an explicit `--configfile
+         +` (there's no                                                  
+      62 +default — see below) and adjusting `--cores` to what's availabl
+         +e:                                                             
+      63  
+      64  ```bash
+      64 -snakemake --cores 4                                            
+      65 +snakemake --configfile config.test.yaml --cores 4      # tiny y
+         +east fixture                                                   
+      66 +snakemake --configfile config.pasilla.yaml --cores 4   # real D
+         +rosophila dataset                                              
+      67  ```
+      68  
+      67 -Samples and reference paths are defined in `config.yaml`. Outpu
+         -ts:                                                            
+      69 +Each config defines its own samples, reference paths, and `resu
+         +lts_dir` (e.g.                                                 
+      70 +`results/test/`, `results/pasilla/`), so different runs never m
+         +ix or overwrite each                                           
+      71 +other's outputs. Within a config's `results_dir`:              
+      72  
+      69 -- `results/counts/gene_counts.csv` — the gene-level count matri
+         -x.                                                             
+      70 -- `results/qc/multiqc_report.html` — aggregated QC (FastQC, fas
+         -tp, Salmon).                                                   
+      73 +- `counts/gene_counts.csv` — the gene-level count matrix.      
+      74 +- `qc/multiqc_report.html` — aggregated QC (FastQC, fastp, Salm
+         +on).                                                           
+      75  
+      76 +Snakemake merges (rather than replaces) a `--configfile` with a
+         +ny default set via a                                           
+      77 +`configfile:` directive in the `Snakefile` — which is why there
+         + isn't one; passing                                            
+      78 +`--configfile` is required, and omitting it fails fast with a c
+         +lear error rather than                                         
+      79 +silently mixing two configs' samples together.                 
+      80 +                                                               
+      81  The pipeline: FastQC (raw QC) → fastp (trimming) → Salmon (pseu
+          do-alignment +
+      82  transcript quantification) → pytximport (gene-level summarizati
+          on) → MultiQC
+      83  (QC summary).
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Summary
+
+  Rename: config.yaml → config.test.yaml (via git mv, history preserved), paired
+  with config.pasilla.yaml for the real dataset — symmetric naming now that
+  there are two.
+
+  Fix: added a results_dir key to both configs (results/test, results/pasilla)
+  and threaded it through every rule's output/input/log-adjacent paths in the
+  Snakefile (via a RESULTS = config["results_dir"] constant). Also removed the
+  Snakefile's implicit configfile: "config.yaml" default — necessary because
+  results_dir alone doesn't stop Snakemake's config-merge behavior; only
+  requiring an explicit --configfile on every run prevents the two configs'
+  samples dicts from silently unioning. Running with no --configfile now fails
+  immediately with a clear KeyError instead of doing something wrong silently.
+
+  Verified:
+  - Both snakemake --configfile config.test.yaml and --configfile 
+    config.pasilla.yaml resolve to only their own samples (checked via dry-run
+    job lists).
+  - Re-ran both end-to-end into separate results/test/ and results/pasilla/
+    trees — no shared files.
+  - Numbers are identical to the previously-validated run (pasilla gene row:
+    569.57 / 127.197 / 1752.0, same as before).
+  - Each config's MultiQC report now only lists its own samples — the
+    cross-contamination is gone.
+  - Both idempotent on re-run.
+
+  README updated to document the mandatory --configfile and both example
+  invocations.
+
+✻ Churned for 3m 54s · done 5:36 AM
+
+❯ But README (and other files) should not have information about the Drosophila 
+  dataset. This dataset is a "real-case" dataset and it is not tied to the      
+  pipeline itself (like our test dataset)                                       
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Understood — the pipeline's own docs should stay dataset-agnostic; the pasilla
+  run was just a real-world exercise of it, not part of what the pipeline "is."
+  Let me scrub the Drosophila-specific mentions from the README and Snakefile
+  comment, and keep config.pasilla.yaml out of git entirely (like data/).
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(Snakefile)  ⎿  Removed 1 line
+      1  # No default configfile: always pass one explicitly, e.g.
+      2  #   snakemake --configfile config.test.yaml --cores 4
+      3 -#   snakemake --configfile config.pasilla.yaml --cores 4        
+      3  # A default here would get merged (not replaced) with whatever -
+         -configfile is
+      4  # passed, silently unioning both configs' "samples" dicts.
+      5  
+
+● Now the README:
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(README.md)
+  ⎿  Added 4 lines, removed 3 lines
+      34  has. A GFF3 or nonstandard GTF may need extra options — see the
+           comment on the
+      35  `tx2gene` rule in the `Snakefile`.
+      36  
+      37 -This fixture is used by `config.test.yaml`. `config.pasilla.yam
+         -l` runs the same                                               
+      38 -workflow against a real dataset instead (subsampled *Drosophila
+         -* pasilla-knockdown                                            
+      39 -RNA-seq) — see "Running the workflow" below.                   
+      37 +This fixture is used by `config.test.yaml`, the config for test
+         +ing the pipeline                                               
+      38 +itself. To run against a real dataset, create your own config f
+         +ile (see "Running                                              
+      39 +the workflow" below) pointing at your own samples and reference
+         + — it isn't tied to                                            
+      40 +the pipeline.                                                  
+      41  
+      42  The files are checked into the repo (small enough, ~350KB) so t
+          he workflow is
+      43  reproducible without a network dependency. To re-fetch them if 
+          needed:
+
+● Update(README.md)
+  ⎿  Added 5 lines, removed 5 lines
+      63  default — see below) and adjusting `--cores` to what's availabl
+          e:
+      64  
+      65  ```bash
+      66 -snakemake --configfile config.test.yaml --cores 4      # tiny y
+         -east fixture                                                   
+      67 -snakemake --configfile config.pasilla.yaml --cores 4   # real D
+         -rosophila dataset                                              
+      66 +snakemake --configfile config.test.yaml --cores 4              
+      67  ```
+      68  
+      70 -Each config defines its own samples, reference paths, and `resu
+         -lts_dir` (e.g.                                                 
+      71 -`results/test/`, `results/pasilla/`), so different runs never m
+         -ix or overwrite each                                           
+      72 -other's outputs. Within a config's `results_dir`:              
+      69 +For a real dataset, copy `config.test.yaml` to your own config 
+         +file and point it at                                           
+      70 +your samples/reference — give it its own `results_dir` (e.g. `r
+         +esults/<name>/`) so                                            
+      71 +different runs never mix or overwrite each other's outputs. Wit
+         +hin a config's                                                 
+      72 +`results_dir`:                                                 
+      73  
+      74  - `counts/gene_counts.csv` — the gene-level count matrix.
+      75  - `qc/multiqc_report.html` — aggregated QC (FastQC, fastp, Salm
+          on).
+
+● Now let's keep config.pasilla.yaml out of git, mirroring how data/ is already
+  excluded (same reasoning: real-case artifact, not a pipeline component).
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(.gitignore)
+  ⎿  Added 1 line
+      1  results/
+      2  logs/
+      3  data/
+      4 +config.pasilla.yaml                                             
+      5  .snakemake/
+      6  __pycache__/
+      7  *.pyc
+
+● Let's do a final sweep and confirm the pipeline still works and no Drosophila
+  mentions remain in tracked docs.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● All clean now.
+
+  - config.pasilla.yaml still exists locally with all its Drosophila-specific
+    detail (I didn't delete your work), but it's .gitignored — same treatment as
+    data/, since it's a real-case run artifact, not part of the pipeline
+    itself.
+  - README.md and the Snakefile comment no longer mention
+    Drosophila/pasilla/Zenodo anywhere — they only describe the generic
+    mechanism (config.test.yaml as the pipeline's own test fixture, and "copy it
+    to make your own config" for real data).
+  - Verified: git status shows only the intended tracked changes (.gitignore,
+    README.md, Snakefile, config.yaml→config.test.yaml rename), and the test
+    config still dry-runs cleanly.
+
+✻ Cooked for 1m 31s · done 5:39 AM
+
+❯ Inspect the final codebase one more time, clean up the naming and the         
+  structure, generate a PDF document explaining all the steps in detail.        
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Let me first check the timestamps to understand what happened, then do a full
+  inspection.
+
+  Read 2 files, ran 4 shell commands (ctrl+o to expand)
+
+● Found the one stale reference. Let me also verify the Snakefile still runs
+  cleanly and check for any other structural issues before fixing.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Found one real issue: README.md line 30 still says config.yaml (stale, from
+  before the rename), and it's redundant with the paragraph below it that
+  already explains real-dataset configs properly. Let me clean that up.
+
+● Update(README.md)
+  ⎿  Added 2 lines, removed 3 lines
+      25  
+      26  `test-data/reference/transcriptome.fasta` and `test-data/refere
+          nce/genes.gtf` are the
+      27  matching transcriptome/annotation fixture from the same nf-core
+           test-datasets repo,
+      28 -used by Salmon and the gene-counting step. Note: this is fixtur
+         -e data for testing the                                         
+      29 -workflow, not necessarily the reference you'd use for a real an
+         -alysis — swap the                                              
+      30 -paths in `config.yaml` to point at your own reference instead. 
+      28 +used by Salmon and the gene-counting step. Note: this is fixtur
+         +e data for testing                                             
+      29 +the workflow, not the reference you'd use for a real analysis. 
+      30  
+      31  The gene-counting step (transcript→gene mapping) assumes a stan
+          dard GTF with
+      32  `transcript_id`/`gene_id` attributes (e.g. Ensembl-style), whic
+          h this fixture GTF
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Now let's build the detailed PDF document. First checking what PDF-generation
+  tools are available.
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+● Weasyprint works. Now let's write the technical documentation as HTML and
+  convert it to PDF.
+
+  Made 1 scratchpad edit +512, ran 1 shell command (ctrl+o to expand)
+
+● Now converting to PDF.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Let's inspect the rendered pages to check formatting quality.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● 13 pages. Let's visually check the cover, TOC, and a content page.
+
+  Read 1 file (ctrl+o to expand)
+
+● Cover looks clean. Let's check the pipeline-steps page and the tables to
+  verify code blocks / wide content wrap correctly.
+
+  Read 2 files, ran 1 shell command (ctrl+o to expand)
+
+● Clean and readable. The document renders well. Let's do a final sanity check
+  of remaining files and confirm the whole repo is consistent.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Everything is consistent and the pipeline still runs correctly.
+
+  Summary
+
+  Inspection findings & cleanup:
+  - Found and fixed one stale reference in README.md (still said config.yaml
+    from before the rename to config.test.yaml), and trimmed a redundant
+    sentence that duplicated guidance already given elsewhere in the doc.
+  - Ran snakemake --lint: the only flagged item across all rules is "specify a
+    conda environment per rule" — that's the deliberate
+    single-shared-environment simplicity tradeoff from earlier, not a real
+    issue, so left as-is.
+  - No other naming/structure inconsistencies found — rule names, config keys,
+    and directory layout are all consistent.
+  - Noted (per the system reminder) that .gitignore was externally reset to drop
+    the data//config.pasilla.yaml entries I'd added last turn — left that alone
+    since it looked like a deliberate change on your end (on the
+    download_test_data branch, alongside commits mirroring our earlier work).
+
+  PDF documentation: generated at docs/rnaseq-workflow-documentation.pdf (13
+  pages, via HTML → weasyprint, since no LaTeX/wkhtmltopdf was available —
+  installed weasyprint into an isolated venv, not the pipeline's conda env). It
+  covers:
+
+  1. Overview & scope (constraints from the README)
+  2. Repository structure
+  3. Environment & dependencies (with versions)
+  4. Configuration system (PE/SE handling, results_dir isolation, why there's no
+     default configfile)
+  5. Every pipeline rule in detail — purpose, inputs/outputs, exact commands,
+     rationale
+  6. Design decisions table (Snakemake vs. alternatives, Salmon vs.
+     STAR+featureCounts, etc.)
+  7. Known limitations & assumptions
+  8. Step-by-step run instructions
+  9. Validation approach (described generically — no dataset specifics, per your
+     last request)
+
+  I kept it dataset-agnostic throughout, consistent with your instruction that
+  the real dataset isn't part of the pipeline's own documentation.
+✻ Worked for 6m 24s · done 5:51 AM

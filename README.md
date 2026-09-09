@@ -25,9 +25,8 @@ simple version of the workflow. It's the `WT_REP1` sample from nf-core's officia
 
 `test-data/reference/transcriptome.fasta` and `test-data/reference/genes.gtf` are the
 matching transcriptome/annotation fixture from the same nf-core test-datasets repo,
-used by Salmon and the gene-counting step. Note: this is fixture data for testing the
-workflow, not necessarily the reference you'd use for a real analysis — swap the
-paths in `config.yaml` to point at your own reference instead.
+used by Salmon and the gene-counting step. Note: this is fixture data for testing
+the workflow, not the reference you'd use for a real analysis.
 
 The gene-counting step (transcript→gene mapping) assumes a standard GTF with
 `transcript_id`/`gene_id` attributes (e.g. Ensembl-style), which this fixture GTF
