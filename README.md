@@ -17,17 +17,49 @@ Process raw RNA-seq sequencing reads into quality-controlled, analysis-ready gen
 
 ## Test data
 
-`data/fastq/SRR6357070_{1,2}.fastq.gz` is a small paired-end *S. cerevisiae* RNA-seq
-sample (50,000 read pairs, ~4.3MB total) used to build and exercise a first, simple
-version of the workflow. It's the `WT_REP1` sample from nf-core's official
+`test-data/fastq/SRR6357070_{1,2}.fastq.gz` is a small paired-end *S. cerevisiae*
+RNA-seq sample (50,000 read pairs, ~4.3MB total) used to build and exercise a first,
+simple version of the workflow. It's the `WT_REP1` sample from nf-core's official
 [rnaseq test dataset](https://github.com/nf-core/test-datasets/tree/rnaseq/testdata/GSE110004)
 (original source: GEO [GSE110004](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE110004)).
 
-The files are checked into the repo (small enough at 4.3MB) so the workflow is
+`test-data/reference/transcriptome.fasta` and `test-data/reference/genes.gtf` are the
+matching transcriptome/annotation fixture from the same nf-core test-datasets repo,
+used by Salmon and the gene-counting step. Note: this is fixture data for testing the
+workflow, not necessarily the reference you'd use for a real analysis — swap the
+paths in `config.yaml` to point at your own reference instead.
+
+The files are checked into the repo (small enough, ~350KB) so the workflow is
 reproducible without a network dependency. To re-fetch them if needed:
 
 ```bash
-mkdir -p data/fastq
-curl -sL -o data/fastq/SRR6357070_1.fastq.gz "https://raw.githubusercontent.com/nf-core/test-datasets/rnaseq/testdata/GSE110004/SRR6357070_1.fastq.gz"
-curl -sL -o data/fastq/SRR6357070_2.fastq.gz "https://raw.githubusercontent.com/nf-core/test-datasets/rnaseq/testdata/GSE110004/SRR6357070_2.fastq.gz"
+mkdir -p test-data/fastq test-data/reference
+curl -sL -o test-data/fastq/SRR6357070_1.fastq.gz "https://raw.githubusercontent.com/nf-core/test-datasets/rnaseq/testdata/GSE110004/SRR6357070_1.fastq.gz"
+curl -sL -o test-data/fastq/SRR6357070_2.fastq.gz "https://raw.githubusercontent.com/nf-core/test-datasets/rnaseq/testdata/GSE110004/SRR6357070_2.fastq.gz"
+curl -sL -o test-data/reference/transcriptome.fasta "https://raw.githubusercontent.com/nf-core/test-datasets/rnaseq/reference/transcriptome.fasta"
+curl -sL -o test-data/reference/genes.gtf "https://raw.githubusercontent.com/nf-core/test-datasets/rnaseq/reference/genes.gtf"
 ```
+
+## Running the workflow
+
+Set up the environment once:
+
+```bash
+conda env create -f environment.yml
+conda activate rnaseq-workflow
+```
+
+Then run the pipeline (adjust `--cores` to what's available):
+
+```bash
+snakemake --cores 4
+```
+
+Samples and reference paths are defined in `config.yaml`. Outputs:
+
+- `results/counts/gene_counts.csv` — the gene-level count matrix.
+- `results/qc/multiqc_report.html` — aggregated QC (FastQC, fastp, Salmon).
+
+The pipeline: FastQC (raw QC) → fastp (trimming) → Salmon (pseudo-alignment +
+transcript quantification) → pytximport (gene-level summarization) → MultiQC
+(QC summary).
